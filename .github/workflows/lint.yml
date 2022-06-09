@@ -1,0 +1,25 @@
+name: Linter Check
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  lint-check:
+    name: Linter Check
+    runs-on: ubuntu-latest
+    env:
+      PRIVATE_KEY: 98cb077f972feb0481f1d894f272c6a1e3c15e272a1658ff716444f465200070
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16.x
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Run Linter Check
+        run: yarn lint:check

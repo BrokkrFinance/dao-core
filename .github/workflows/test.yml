@@ -1,0 +1,28 @@
+name: Unit Tests
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    env:
+      PRIVATE_KEY: 98cb077f972feb0481f1d894f272c6a1e3c15e272a1658ff716444f465200070
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16.x
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Compile
+        run: yarn compile
+
+      - name: Run Unit Tests
+        run: yarn test
