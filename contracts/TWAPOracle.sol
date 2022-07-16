@@ -89,6 +89,7 @@ contract TWAPOracle is IPriceOracle {
             uint32 blockTimestamp
         )
     {
+        // solhint-disable-next-line not-rely-on-time
         blockTimestamp = uint32(block.timestamp % 2**32);
         price0Cumulative = pair.price0CumulativeLast();
         price1Cumulative = pair.price1CumulativeLast();

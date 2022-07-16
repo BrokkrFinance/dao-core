@@ -2,8 +2,6 @@ import { expect } from "chai"
 import { ethers, network } from "hardhat"
 import { currentBlockchainTime, setBlockchainTime } from "./utils/time"
 
-const DISTRIBUTION_DAY = 86400
-
 describe("Token Distributor", function () {
   before(async function () {
     this.TokenDistributor = await ethers.getContractFactory("TokenDistributor")
@@ -103,7 +101,7 @@ describe("Token Distributor", function () {
     expect(await this.tokenDistributor.isReadyForDistribution()).to.equal(false)
     await expect(this.tokenDistributor.distribute()).to.be.revertedWith("Nothing to distribute.")
 
-    const currentTime = (await currentBlockchainTime(ethers.provider)) + DISTRIBUTION_DAY + 1
+    const currentTime = (await currentBlockchainTime(ethers.provider)) + 86400 + 1
     await setBlockchainTime(ethers.provider, currentTime)
     expect(await this.tokenDistributor.isReadyForDistribution()).to.equal(true)
 
@@ -116,7 +114,7 @@ describe("Token Distributor", function () {
     expect(await this.tokenDistributor.isReadyForDistribution()).to.equal(false)
 
     await this.tokenDistributor.updateDistributionAmount(0, 10000)
-    await setBlockchainTime(ethers.provider, currentTime + DISTRIBUTION_DAY + 1)
+    await setBlockchainTime(ethers.provider, currentTime + 86400 + 1)
     await expect(this.tokenDistributor.distribute()).to.be.revertedWith("Not enough tokens for distribution.")
   })
 
