@@ -14,6 +14,8 @@
     "var-name-mixedcase": "error",
     "imports-on-top": "error",
     "func-visibility": ["error", { "ignoreConstructors": true }],
-    "private-vars-leading-underscore": "off"
+    "private-vars-leading-underscore": "off",
+    "reason-string": "off",
+    "no-empty-blocks": "off"
   }
 }
