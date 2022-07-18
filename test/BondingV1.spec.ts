@@ -123,9 +123,9 @@ describe("Bonding V1", function () {
     await this.bonding.removeBondOption(this.teslaToken.address)
     expect((await this.bonding.getBondOptions()).length).to.equal(1)
 
-    await this.bonding.removeBondOption(this.wAvax.address)
-    expect((await this.bonding.getBondOptions()).length).to.equal(0)
-    expect(await this.broToken.balanceOf(this.bonding.address)).to.equal(0)
+    await expect(this.bonding.removeBondOption(this.wAvax.address)).to.be.revertedWith(
+      "At least one bonding option should exist"
+    )
 
     // onlyOwner checks
     await expect(

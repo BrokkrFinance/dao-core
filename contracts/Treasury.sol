@@ -8,6 +8,7 @@ import "@openzeppelin/contracts/utils/Address.sol";
 
 contract Treasury is Ownable {
     using Address for address;
+    using Address for address payable;
     using SafeERC20 for IERC20;
 
     mapping(IERC20 => bool) private whitelistedTokens;
@@ -56,7 +57,7 @@ contract Treasury is Ownable {
         bytes memory _data
     ) external onlyOwner {
         _nativeTransfer(_contract, _amount);
-        address(_contract).functionCall(
+        _contract.functionCall(
             _data,
             "Failed to perform call to the contracts function"
         );

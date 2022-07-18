@@ -142,10 +142,16 @@ contract BondingV1 is
     }
 
     function removeBondOption(address _token) external onlyOwner {
+        require(bonds.length > 1, "At least one bonding option should exist");
+
         IERC20Upgradeable bondingToken = IERC20Upgradeable(_token);
 
         uint256 index = _getBondOptionIndex(bondingToken);
         uint256 remainingBalance = bonds[index].bondingBalance;
+
+        if (!bonds[index].enabled) {
+            disabledBondOptions--;
+        }
 
         bonds[index] = bonds[bonds.length - 1];
         bonds.pop();
@@ -257,18 +263,15 @@ contract BondingV1 is
     function _getBondOptionIndex(IERC20Upgradeable _token)
         private
         view
-        returns (uint256 index)
+        returns (uint256)
     {
-        bool exists;
         for (uint256 i = 0; i < bonds.length; i++) {
             if (bonds[i].token == _token) {
-                exists = true;
-                index = i;
-                break;
+                return i;
             }
         }
 
-        require(exists, "Bonding option doesn't exists");
+        revert("Bonding option doesn't exists");
     }
 
     function _swap(
