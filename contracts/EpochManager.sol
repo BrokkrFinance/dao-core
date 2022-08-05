@@ -1,8 +1,9 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "./interfaces/IEpochManager.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import { IEpochManager } from "./interfaces/IEpochManager.sol";
+
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
 contract EpochManager is IEpochManager, Ownable {
     uint256 private epoch;

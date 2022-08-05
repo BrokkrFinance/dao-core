@@ -1,9 +1,9 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 contract Vesting is Ownable {
     using SafeERC20 for IERC20;
@@ -27,7 +27,7 @@ contract Vesting is Ownable {
     }
 
     function claim() external {
-        VestingInfo storage info = vestingInfos[msg.sender];
+        VestingInfo storage info = vestingInfos[_msgSender()];
         require(info.schedules.length > 0, "No vesting schedules was found");
 
         uint256 claimAmount = computeClaimAmount(info);
@@ -35,9 +35,9 @@ contract Vesting is Ownable {
 
         // solhint-disable-next-line not-rely-on-time
         info.lastClaim = block.timestamp;
-        vestingInfos[msg.sender] = info;
+        vestingInfos[_msgSender()] = info;
 
-        broToken.safeTransfer(msg.sender, claimAmount);
+        broToken.safeTransfer(_msgSender(), claimAmount);
     }
 
     function computeClaimAmount(VestingInfo memory _info)
@@ -60,6 +60,10 @@ contract Vesting is Ownable {
         address[] calldata _accounts,
         VestingSchedule[][] calldata _schedules
     ) external onlyOwner {
+        require(
+            _accounts.length == _schedules.length,
+            "Accounts must be the same length as schedules"
+        );
         for (uint256 i = 0; i < _accounts.length; i++) {
             VestingInfo storage info = vestingInfos[_accounts[i]];
 

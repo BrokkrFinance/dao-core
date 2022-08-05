@@ -24,7 +24,7 @@ describe("Airdrop", function () {
     this.airdrop = await this.Airdrop.deploy(this.broToken.address)
     await this.airdrop.deployed()
 
-    await this.broToken.transfer(this.airdrop.address, "100000000")
+    await this.broToken.approve(this.airdrop.address, "100000000")
   })
 
   it("should allow only owner to register merkle root", async function () {
@@ -57,6 +57,9 @@ describe("Airdrop", function () {
     await this.airdrop.connect(this.paul).claim(1, stage1Proofs[1], "400", { from: this.paul.address })
     expect(await this.airdrop.isClaimed(this.paul.address, 1)).to.equal(true)
     expect(await this.broToken.balanceOf(this.paul.address)).to.equal(400)
+
+    expect(await this.airdrop.getClaimedBroPerStage(1)).to.eq(700)
+    expect(await this.airdrop.getClaimedAccountsCountPerStage(1)).to.eq(2)
 
     await expect(
       this.airdrop.connect(this.mark).claim(1, stage1Proofs[0], "300", { from: this.mark.address })

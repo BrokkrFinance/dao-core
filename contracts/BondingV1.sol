@@ -1,67 +1,48 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "./interfaces/IEpochManager.sol";
-import "./interfaces/IPriceOracle.sol";
-import "./interfaces/IDistributionHandler.sol";
+import { IEpochManager } from "./interfaces/IEpochManager.sol";
+import { IPriceOracle } from "./interfaces/IPriceOracle.sol";
+import { IDistributionHandler } from "./interfaces/IDistributionHandler.sol";
+import { IStakingV1 } from "./interfaces/IStakingV1.sol";
+import { IBondingV1 } from "./interfaces/IBondingV1.sol";
+import { DistributionHandlerBaseUpgradeable } from "./base/DistributionHandlerBaseUpgradeable.sol";
 
-import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
+import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import { SafeERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 
 contract BondingV1 is
     OwnableUpgradeable,
+    PausableUpgradeable,
     UUPSUpgradeable,
-    IDistributionHandler
+    IDistributionHandler,
+    IBondingV1,
+    DistributionHandlerBaseUpgradeable
 {
     using SafeERC20Upgradeable for IERC20Upgradeable;
-
-    enum BondingMode {
-        Normal,
-        Community
-    }
-
-    struct BondOption {
-        bool enabled;
-        IERC20Upgradeable token;
-        IPriceOracle oracle;
-        uint8 discount; // .00 number
-        uint256 bondingBalance;
-    }
-
-    struct Claim {
-        uint256 amount;
-        uint256 bondedAt;
-    }
 
     uint8 public constant MIN_DISCOUNT = 1; // .00 number
     uint8 public constant MAX_DISCOUNT = 99; // .00 number
 
     IEpochManager public epochManager;
-
     IERC20Upgradeable public broToken;
     address public treasury;
-    address public distributor;
 
-    uint256 private minBroPayout;
+    uint256 public minBroPayout;
+    uint256 public disabledBondOptions;
+
+    BondingMode public mode;
+    // Normal mode
+    uint256 public vestingPeriod;
+    // Community mode
+    uint256 public unstakingPeriod;
+    IStakingV1 public broStaking;
 
     BondOption[] private bonds;
-    uint256 private disabledBondOptions;
-
     mapping(address => Claim[]) private claims;
-
-    BondingMode private mode;
-    // Normal mode
-    uint256 private vestingPeriod;
-    // Community mode
-    uint256 private unstakingPeriodEpochs;
-    address private broStaking;
-
-    modifier onlyDistributor() {
-        require(msg.sender == distributor, "Caller is not the distributor");
-        _;
-    }
 
     function initialize(
         address epochManager_,
@@ -71,20 +52,19 @@ contract BondingV1 is
         uint256 minBroPayout_
     ) public initializer {
         __Ownable_init();
+        __Pausable_init();
         __UUPSUpgradeable_init();
+        __DistributionHandlerBaseUpgradeable_init(distributor_);
 
         epochManager = IEpochManager(epochManager_);
         broToken = IERC20Upgradeable(broToken_);
         treasury = treasury_;
-        distributor = distributor_;
         minBroPayout = minBroPayout_;
     }
 
     function _authorizeUpgrade(
         address /* newImplementation */
-    ) internal virtual override {
-        require(owner() == msg.sender, "Upgrade is not authorized");
-    }
+    ) internal virtual override onlyOwner {}
 
     function addBondOption(
         address _token,
@@ -114,6 +94,7 @@ contract BondingV1 is
         }
 
         bonds.push(newOption);
+        emit BondOptionAdded(_token, _oracle, _discount);
     }
 
     function enableBondOption(address _token) external onlyOwner {
@@ -124,6 +105,8 @@ contract BondingV1 is
         require(!bonds[index].enabled, "Bonding option already enabled");
         bonds[index].enabled = true;
         disabledBondOptions--;
+
+        emit BondOptionEnabled(_token);
     }
 
     function disableBondOption(address _token) external onlyOwner {
@@ -139,10 +122,14 @@ contract BondingV1 is
             disabledBondOptions < bonds.length,
             "One or more bonding options should always be enabled"
         );
+        emit BondOptionDisabled(_token);
     }
 
     function removeBondOption(address _token) external onlyOwner {
-        require(bonds.length > 1, "At least one bonding option should exist");
+        require(
+            bonds.length > 1,
+            "At least one enabled bonding option should exist"
+        );
 
         IERC20Upgradeable bondingToken = IERC20Upgradeable(_token);
 
@@ -153,12 +140,19 @@ contract BondingV1 is
             disabledBondOptions--;
         }
 
+        require(
+            disabledBondOptions < bonds.length,
+            "At least one enabled bonding option should exist"
+        );
+
         bonds[index] = bonds[bonds.length - 1];
         bonds.pop();
 
         if (remainingBalance > 0) {
             broToken.safeTransfer(distributor, remainingBalance);
         }
+
+        emit BondOptionRemoved(_token);
     }
 
     function updateBondDiscount(address _token, uint8 _newDiscount)
@@ -180,13 +174,13 @@ contract BondingV1 is
         vestingPeriod = _vestingPeriod;
     }
 
-    function setCommunityMode(
-        address _broStaking,
-        uint256 _unstakingPeriodEpochs
-    ) external onlyOwner {
+    function setCommunityMode(address _broStaking, uint256 _unstakingPeriod)
+        external
+        onlyOwner
+    {
         mode = BondingMode.Community;
-        broStaking = _broStaking;
-        unstakingPeriodEpochs = _unstakingPeriodEpochs;
+        broStaking = IStakingV1(_broStaking);
+        unstakingPeriod = _unstakingPeriod;
     }
 
     function setMinBroPayout(uint256 _newPayout) external onlyOwner {
@@ -202,14 +196,16 @@ contract BondingV1 is
                 bonds[i].bondingBalance += perBondDistribution;
             }
         }
+
+        emit DistributionHandled(_amount);
     }
 
-    function bond(address _token, uint256 _amount) external {
+    function bond(address _token, uint256 _amount) external whenNotPaused {
         IERC20Upgradeable bondingToken = IERC20Upgradeable(_token);
         uint256 index = _getBondOptionIndex(bondingToken);
         require(bonds[index].enabled, "Bonding option is disabled");
 
-        bondingToken.safeTransferFrom(msg.sender, treasury, _amount);
+        bondingToken.safeTransferFrom(_msgSender(), treasury, _amount);
         bonds[index].oracle.updatePrice();
 
         uint256 broPayout = _swap(index, _token, _amount);
@@ -225,20 +221,25 @@ contract BondingV1 is
         bonds[index].bondingBalance -= broPayout;
 
         if (mode == BondingMode.Normal) {
-            Claim[] storage userClaims = claims[msg.sender];
+            Claim[] storage userClaims = claims[_msgSender()];
             // solhint-disable-next-line not-rely-on-time
             userClaims.push(Claim(broPayout, block.timestamp));
-            claims[msg.sender] = userClaims;
-        } else if (mode == BondingMode.Community) {
-            // TODO: add community bond lock in staking
+            claims[_msgSender()] = userClaims;
         } else {
-            revert("Unknown bonding mode");
+            broToken.safeApprove(address(broStaking), broPayout);
+            broStaking.communityBondStake(
+                _msgSender(),
+                broPayout,
+                unstakingPeriod
+            );
         }
+
+        emit BondPerformed(_token, _amount);
     }
 
-    function claim() external {
+    function claim() external whenNotPaused {
         uint256 epoch = epochManager.getEpoch();
-        Claim[] storage userClaims = claims[msg.sender];
+        Claim[] storage userClaims = claims[_msgSender()];
         uint256 claimAmount = 0;
 
         uint256 i = 0;
@@ -256,8 +257,10 @@ contract BondingV1 is
         }
 
         require(claimAmount > 0, "Nothing to claim");
-        claims[msg.sender] = userClaims;
-        broToken.safeTransfer(msg.sender, claimAmount);
+        claims[_msgSender()] = userClaims;
+        broToken.safeTransfer(_msgSender(), claimAmount);
+
+        emit BondClaimed(_msgSender(), claimAmount);
     }
 
     function _getBondOptionIndex(IERC20Upgradeable _token)
@@ -271,7 +274,7 @@ contract BondingV1 is
             }
         }
 
-        revert("Bonding option doesn't exists");
+        revert BondingOptionNotFound(_token);
     }
 
     function _swap(
@@ -282,6 +285,14 @@ contract BondingV1 is
         uint256 broAmount = bonds[_index].oracle.consult(_token, _amount);
         uint256 broPayout = (broAmount * bonds[_index].discount) / 100;
         return broPayout;
+    }
+
+    function pause() external onlyOwner {
+        _pause();
+    }
+
+    function unpause() external onlyOwner {
+        _unpause();
     }
 
     function supportsDistributions() public pure returns (bool) {
@@ -330,12 +341,8 @@ contract BondingV1 is
             a = vestingPeriod;
         }
         if (mode == BondingMode.Community) {
-            a = unstakingPeriodEpochs;
-            b = broStaking;
+            a = unstakingPeriod;
+            b = address(broStaking);
         }
-    }
-
-    function getDisabledBondOptionsCount() public view returns (uint256) {
-        return disabledBondOptions;
     }
 }
