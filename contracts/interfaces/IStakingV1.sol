@@ -50,7 +50,7 @@ interface IStakingV1 {
         uint256 maxUnstakingPeriod_;
         uint8 maxUnstakesPerStaker_;
         uint8 maxWithdrawalsPerUnstake_;
-        uint256 rewardGenerationAmountBaseIndex_;
+        uint256 rewardGeneratingAmountBaseIndex_;
         uint256 withdrawalAmountReducePerc_;
         uint256 withdrawnBBroRewardReducePerc_;
         uint256 bBroRewardsBaseIndex_;
@@ -58,14 +58,14 @@ interface IStakingV1 {
     }
 
     struct Withdrawal {
-        uint256 rewardsGenerationAmount;
+        uint256 rewardsGeneratingAmount;
         uint256 lockedAmount;
         uint256 withdrewAt;
         uint256 unstakingPeriod;
     }
 
     struct Unstake {
-        uint256 rewardsGenerationAmount;
+        uint256 rewardsGeneratingAmount;
         uint256 lockedAmount;
         uint256 unstakingPeriod;
     }

@@ -39,7 +39,7 @@ contract StakingV1 is
     uint8 public maxUnstakesPerStaker;
     uint8 public maxWithdrawalsPerUnstake;
 
-    uint256 public rewardGenerationAmountBaseIndex; // .0000 number
+    uint256 public rewardGeneratingAmountBaseIndex; // .0000 number
     uint256 public withdrawalAmountReducePerc; // .00 number
     uint256 public withdrawnBBroRewardReducePerc; // .00 number
 
@@ -81,8 +81,8 @@ contract StakingV1 is
         maxUnstakesPerStaker = initParams_.maxUnstakesPerStaker_;
         maxWithdrawalsPerUnstake = initParams_.maxWithdrawalsPerUnstake_;
 
-        rewardGenerationAmountBaseIndex =
-            (initParams_.rewardGenerationAmountBaseIndex_ * PRECISION) /
+        rewardGeneratingAmountBaseIndex =
+            (initParams_.rewardGeneratingAmountBaseIndex_ * PRECISION) /
             10_000;
         withdrawalAmountReducePerc = initParams_.withdrawalAmountReducePerc_;
         withdrawnBBroRewardReducePerc = initParams_
@@ -178,7 +178,7 @@ contract StakingV1 is
             _unstakingPeriod
         );
         uint256 totalStakedPerUnstake = unstakingPeriod
-            .rewardsGenerationAmount + unstakingPeriod.lockedAmount;
+            .rewardsGeneratingAmount + unstakingPeriod.lockedAmount;
         uint256 withdrawalsByUnstakingPeriodCount = _countWithdrawalsByUnstakingPeriod(
                 staker,
                 _unstakingPeriod
@@ -200,31 +200,31 @@ contract StakingV1 is
             revert WithdrawalsLimitWasReached();
         }
 
-        uint256 reducedRewardsGenerationWithdrawalAmount = (_amount *
+        uint256 reducedRewardsGeneratingWithdrawalAmount = (_amount *
             withdrawalAmountReducePerc) / 100;
         Withdrawal memory withdrawal = Withdrawal(
-            reducedRewardsGenerationWithdrawalAmount,
-            _amount - reducedRewardsGenerationWithdrawalAmount,
+            reducedRewardsGeneratingWithdrawalAmount,
+            _amount - reducedRewardsGeneratingWithdrawalAmount,
             staker.lastRewardsClaimTimestamp,
             unstakingPeriod.unstakingPeriod
         );
 
-        totalBroStaked -= unstakingPeriod.rewardsGenerationAmount;
+        totalBroStaked -= unstakingPeriod.rewardsGeneratingAmount;
 
         uint256 reducedTotalStakedPerUnstake = totalStakedPerUnstake - _amount;
         unstakingPeriod
-            .rewardsGenerationAmount = _calculateRewardsGenerationBro(
+            .rewardsGeneratingAmount = _calculateRewardsGeneratingBro(
             reducedTotalStakedPerUnstake,
             _unstakingPeriod
         );
         unstakingPeriod.lockedAmount =
             reducedTotalStakedPerUnstake -
-            unstakingPeriod.rewardsGenerationAmount;
+            unstakingPeriod.rewardsGeneratingAmount;
         staker.withdrawals.push(withdrawal);
 
         totalBroStaked +=
-            unstakingPeriod.rewardsGenerationAmount +
-            withdrawal.rewardsGenerationAmount;
+            unstakingPeriod.rewardsGeneratingAmount +
+            withdrawal.rewardsGeneratingAmount;
 
         emit Unstaked(_msgSender(), _amount, _unstakingPeriod);
     }
@@ -248,7 +248,7 @@ contract StakingV1 is
             // solhint-disable-next-line not-rely-on-time
             if (withdrawalExpiresAt <= block.timestamp) {
                 withdrawAmount +=
-                    withdrawal.rewardsGenerationAmount +
+                    withdrawal.rewardsGeneratingAmount +
                     withdrawal.lockedAmount;
 
                 staker.withdrawals[i] = staker.withdrawals[
@@ -274,7 +274,7 @@ contract StakingV1 is
 
             bool canBeRemoved = staker
                 .unstakingPeriods[k]
-                .rewardsGenerationAmount ==
+                .rewardsGeneratingAmount ==
                 0 &&
                 staker.unstakingPeriods[k].lockedAmount == 0 &&
                 withdrawalsByUnstakingPeriodLeft == 0;
@@ -305,7 +305,7 @@ contract StakingV1 is
         for (uint256 i = 0; i < staker.withdrawals.length; i++) {
             uint256 totalWithdrewAmount = staker
                 .withdrawals[i]
-                .rewardsGenerationAmount + staker.withdrawals[i].lockedAmount;
+                .rewardsGeneratingAmount + staker.withdrawals[i].lockedAmount;
             if (
                 totalWithdrewAmount != _amount ||
                 staker.withdrawals[i].unstakingPeriod != _unstakingPeriod
@@ -313,7 +313,7 @@ contract StakingV1 is
                 continue;
             }
 
-            totalBroStaked -= staker.withdrawals[i].rewardsGenerationAmount;
+            totalBroStaked -= staker.withdrawals[i].rewardsGeneratingAmount;
 
             staker.withdrawals[i] = staker.withdrawals[
                 staker.withdrawals.length - 1
@@ -406,21 +406,21 @@ contract StakingV1 is
         return _calculateStakerRewards(staker);
     }
 
-    // bro rewards generation amount calculation
+    // bro rewards generating amount calculation
     // formula:
     // base + (1 - base) * unstaking_period / max_unstaking_period
-    function _calculateRewardsGenerationBro(
+    function _calculateRewardsGeneratingBro(
         uint256 _amount,
         uint256 _unstakingPeriod
     ) private view returns (uint256) {
         uint256 periodIndex = (_unstakingPeriod * PRECISION) /
             maxUnstakingPeriod;
-        uint256 xtraRewardGenerationAmountIndex = 1 *
+        uint256 xtraRewardGeneratingAmountIndex = 1 *
             PRECISION -
-            rewardGenerationAmountBaseIndex;
+            rewardGeneratingAmountBaseIndex;
 
-        uint256 rewardsGenerationPerBro = rewardGenerationAmountBaseIndex +
-            ((xtraRewardGenerationAmountIndex * periodIndex) / PRECISION);
+        uint256 rewardsGenerationPerBro = rewardGeneratingAmountBaseIndex +
+            ((xtraRewardGeneratingAmountIndex * periodIndex) / PRECISION);
 
         return (_amount * rewardsGenerationPerBro) / PRECISION;
     }
@@ -443,14 +443,14 @@ contract StakingV1 is
             Unstake memory unstaking = _staker.unstakingPeriods[i];
 
             _staker.pendingBroReward += _computeBroReward(
-                unstaking.rewardsGenerationAmount,
+                unstaking.rewardsGeneratingAmount,
                 _staker.broRewardIndex
             );
 
             // can claim some rewards
             if (unclaimedEpochs != 0) {
                 _staker.pendingBBroReward += _computeBBroReward(
-                    unstaking.rewardsGenerationAmount + unstaking.lockedAmount,
+                    unstaking.rewardsGeneratingAmount + unstaking.lockedAmount,
                     unstaking.unstakingPeriod,
                     unclaimedEpochs
                 );
@@ -462,7 +462,7 @@ contract StakingV1 is
             Withdrawal memory withdrawal = _staker.withdrawals[j];
 
             _staker.pendingBroReward += _computeBroReward(
-                withdrawal.rewardsGenerationAmount,
+                withdrawal.rewardsGeneratingAmount,
                 _staker.broRewardIndex
             );
 
@@ -489,7 +489,7 @@ contract StakingV1 is
                 if (withdrawalUnclaimedEpochs != 0) {
                     _staker.pendingBBroReward +=
                         (_computeBBroReward(
-                            withdrawal.rewardsGenerationAmount +
+                            withdrawal.rewardsGeneratingAmount +
                                 withdrawal.lockedAmount,
                             withdrawal.unstakingPeriod,
                             withdrawalUnclaimedEpochs
@@ -506,13 +506,13 @@ contract StakingV1 is
     }
 
     function _computeBroReward(
-        uint256 _rewardsGenerationBroAmount,
+        uint256 _rewardsGeneratingBroAmount,
         uint256 _stakerRewardIndex
     ) private view returns (uint256) {
         return
-            (_rewardsGenerationBroAmount *
+            (_rewardsGeneratingBroAmount *
                 globalBroRewardIndex -
-                _rewardsGenerationBroAmount *
+                _rewardsGeneratingBroAmount *
                 _stakerRewardIndex) / PRECISION;
     }
 
@@ -542,24 +542,24 @@ contract StakingV1 is
 
             totalBroStaked -= _staker
                 .unstakingPeriods[i]
-                .rewardsGenerationAmount;
+                .rewardsGeneratingAmount;
 
             uint256 totalStakedPerUnstake = _amount +
-                _staker.unstakingPeriods[i].rewardsGenerationAmount +
+                _staker.unstakingPeriods[i].rewardsGeneratingAmount +
                 _staker.unstakingPeriods[i].lockedAmount;
 
-            uint256 newRewardsGenerationAmount = _calculateRewardsGenerationBro(
+            uint256 newRewardsGeneratingAmount = _calculateRewardsGeneratingBro(
                 totalStakedPerUnstake,
                 _unstakingPeriod
             );
 
             _staker
                 .unstakingPeriods[i]
-                .rewardsGenerationAmount = newRewardsGenerationAmount;
+                .rewardsGeneratingAmount = newRewardsGeneratingAmount;
             _staker.unstakingPeriods[i].lockedAmount =
                 totalStakedPerUnstake -
-                newRewardsGenerationAmount;
-            totalBroStaked += newRewardsGenerationAmount;
+                newRewardsGeneratingAmount;
+            totalBroStaked += newRewardsGeneratingAmount;
 
             return;
         }
@@ -578,19 +578,19 @@ contract StakingV1 is
             revert UnstakesLimitWasReached();
         }
 
-        uint256 rewardsGenerationBro = _calculateRewardsGenerationBro(
+        uint256 rewardsGeneratingBro = _calculateRewardsGeneratingBro(
             _amount,
             _unstakingPeriod
         );
 
         _staker.unstakingPeriods.push(
             Unstake(
-                rewardsGenerationBro,
-                _amount - rewardsGenerationBro,
+                rewardsGeneratingBro,
+                _amount - rewardsGeneratingBro,
                 _unstakingPeriod
             )
         );
-        totalBroStaked += rewardsGenerationBro;
+        totalBroStaked += rewardsGeneratingBro;
     }
 
     function _findUnstakingPeriod(
@@ -676,16 +676,16 @@ contract StakingV1 is
         maxWithdrawalsPerUnstake = _newMaxWithdrawalsPerUnstake;
     }
 
-    function setRewardGenerationAmountBaseIndex(
-        uint256 _newRewardGenerationAmountBaseIndex
+    function setRewardGeneratingAmountBaseIndex(
+        uint256 _newRewardGeneratingAmountBaseIndex
     ) external onlyOwner {
         require(
-            _newRewardGenerationAmountBaseIndex > 0 &&
-                _newRewardGenerationAmountBaseIndex <= 10000,
+            _newRewardGeneratingAmountBaseIndex > 0 &&
+                _newRewardGeneratingAmountBaseIndex <= 10000,
             "Invalid decimals"
         );
-        rewardGenerationAmountBaseIndex =
-            (_newRewardGenerationAmountBaseIndex * PRECISION) /
+        rewardGeneratingAmountBaseIndex =
+            (_newRewardGeneratingAmountBaseIndex * PRECISION) /
             10_000;
     }
 

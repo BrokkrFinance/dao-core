@@ -9,7 +9,7 @@ const STAKING_CONFIG = {
   maxUnstakingPeriod: 365,
   maxUnstakesPerStaker: 5,
   maxWithdrawalsPerUnstake: 6,
-  rewardGenerationAmountBaseIndex: 7400,
+  rewardGeneratingAmountBaseIndex: 7400,
   withdrawalAmountReducePerc: 50,
   withdrawnBBroRewardReducePerc: 50,
   bBroRewardsBaseIndex: 3000,
@@ -53,7 +53,7 @@ describe("Staking V1", function () {
         STAKING_CONFIG.maxUnstakingPeriod,
         STAKING_CONFIG.maxUnstakesPerStaker,
         STAKING_CONFIG.maxWithdrawalsPerUnstake,
-        STAKING_CONFIG.rewardGenerationAmountBaseIndex,
+        STAKING_CONFIG.rewardGeneratingAmountBaseIndex,
         STAKING_CONFIG.withdrawalAmountReducePerc,
         STAKING_CONFIG.withdrawnBBroRewardReducePerc,
         STAKING_CONFIG.bBroRewardsBaseIndex,
@@ -82,7 +82,7 @@ describe("Staking V1", function () {
     expect(await this.staking.maxUnstakingPeriod()).to.equal(STAKING_CONFIG.maxUnstakingPeriod)
     expect(await this.staking.maxUnstakesPerStaker()).to.equal(STAKING_CONFIG.maxUnstakesPerStaker)
     expect(await this.staking.maxWithdrawalsPerUnstake()).to.equal(STAKING_CONFIG.maxWithdrawalsPerUnstake)
-    expect(await this.staking.rewardGenerationAmountBaseIndex()).to.equal(BigNumber.from("740000000000000000"))
+    expect(await this.staking.rewardGeneratingAmountBaseIndex()).to.equal(BigNumber.from("740000000000000000"))
     expect(await this.staking.withdrawalAmountReducePerc()).to.equal(STAKING_CONFIG.withdrawalAmountReducePerc)
     expect(await this.staking.withdrawnBBroRewardReducePerc()).to.equal(STAKING_CONFIG.withdrawnBBroRewardReducePerc)
     expect(await this.staking.bBroRewardsBaseIndex()).to.equal(BigNumber.from("300000000000000000"))
@@ -96,7 +96,7 @@ describe("Staking V1", function () {
     await this.staking.setMaxUnstakingPeriod(364)
     await this.staking.setMaxUnstakesPerStaker(10)
     await this.staking.setMaxWithdrawalsPerUnstake(10)
-    await this.staking.setRewardGenerationAmountBaseIndex(8000)
+    await this.staking.setRewardGeneratingAmountBaseIndex(8000)
     await this.staking.setWithdrawalAmountReducePerc(60)
     await this.staking.setWithdrawnBBroRewardReducePerc(60)
     await this.staking.setBBroRewardsBaseIndex(4000)
@@ -109,13 +109,13 @@ describe("Staking V1", function () {
     expect(await this.staking.maxUnstakingPeriod()).to.equal(364)
     expect(await this.staking.maxUnstakesPerStaker()).to.equal(10)
     expect(await this.staking.maxWithdrawalsPerUnstake()).to.equal(10)
-    expect(await this.staking.rewardGenerationAmountBaseIndex()).to.equal(BigNumber.from("800000000000000000"))
+    expect(await this.staking.rewardGeneratingAmountBaseIndex()).to.equal(BigNumber.from("800000000000000000"))
     expect(await this.staking.withdrawalAmountReducePerc()).to.equal(60)
     expect(await this.staking.withdrawnBBroRewardReducePerc()).to.equal(60)
     expect(await this.staking.bBroRewardsBaseIndex()).to.equal(BigNumber.from("400000000000000000"))
     expect(await this.staking.bBroRewardsXtraMultiplier()).to.equal(11)
 
-    await expect(this.staking.setRewardGenerationAmountBaseIndex(10_001)).to.be.revertedWith("Invalid decimals")
+    await expect(this.staking.setRewardGeneratingAmountBaseIndex(10_001)).to.be.revertedWith("Invalid decimals")
     await expect(this.staking.setWithdrawalAmountReducePerc(101)).to.be.revertedWith("Invalid decimals")
     await expect(this.staking.setWithdrawnBBroRewardReducePerc(101)).to.be.revertedWith("Invalid decimals")
     await expect(this.staking.setBBroRewardsBaseIndex(10_001)).to.be.revertedWith("Invalid decimals")
@@ -141,7 +141,7 @@ describe("Staking V1", function () {
     await expect(this.staking.connect(this.paul).setMaxWithdrawalsPerUnstake(10)).to.be.revertedWith(
       "Ownable: caller is not the owner"
     )
-    await expect(this.staking.connect(this.paul).setRewardGenerationAmountBaseIndex(8000)).to.be.revertedWith(
+    await expect(this.staking.connect(this.paul).setRewardGeneratingAmountBaseIndex(8000)).to.be.revertedWith(
       "Ownable: caller is not the owner"
     )
     await expect(this.staking.connect(this.paul).setWithdrawalAmountReducePerc(60)).to.be.revertedWith(
@@ -189,7 +189,7 @@ describe("Staking V1", function () {
     expect(await this.broToken.balanceOf(this.staking.address)).to.equal(ethers.utils.parseEther("0"))
   })
 
-  it("should properly calculate rewards generation amount and per epoch staking rewards", async function () {
+  it("should properly calculate rewards generating amount and per epoch staking rewards", async function () {
     await this.staking.setMaxUnstakesPerStaker(14)
     await this.broToken.connect(this.mark).approve(this.staking.address, ethers.utils.parseEther("15"))
 
@@ -215,23 +215,23 @@ describe("Staking V1", function () {
     expect(staker.pendingBroReward).to.equal(0)
     expect(staker.pendingBBroReward).to.equal(0)
 
-    // verify bro rewards generation amount calculation
+    // verify bro rewards generating amount calculation
     const unstakingPeriods = staker.unstakingPeriods
     expect(unstakingPeriods.length).to.equal(14)
-    expect(unstakingPeriods[0].rewardsGenerationAmount.toString().substring(0, 4)).to.equal("7499")
-    expect(unstakingPeriods[1].rewardsGenerationAmount.toString().substring(0, 4)).to.equal("7542")
-    expect(unstakingPeriods[2].rewardsGenerationAmount.toString().substring(0, 4)).to.equal("7578")
-    expect(unstakingPeriods[3].rewardsGenerationAmount.toString().substring(0, 4)).to.equal("7613")
-    expect(unstakingPeriods[4].rewardsGenerationAmount.toString().substring(0, 4)).to.equal("7684")
-    expect(unstakingPeriods[5].rewardsGenerationAmount.toString().substring(0, 4)).to.equal("7756")
-    expect(unstakingPeriods[6].rewardsGenerationAmount.toString().substring(0, 4)).to.equal("7934")
-    expect(unstakingPeriods[7].rewardsGenerationAmount.toString().substring(0, 4)).to.equal("8112")
-    expect(unstakingPeriods[8].rewardsGenerationAmount.toString().substring(0, 4)).to.equal("8468")
-    expect(unstakingPeriods[9].rewardsGenerationAmount.toString().substring(0, 4)).to.equal("8824")
-    expect(unstakingPeriods[10].rewardsGenerationAmount.toString().substring(0, 4)).to.equal("9180")
-    expect(unstakingPeriods[11].rewardsGenerationAmount.toString().substring(0, 4)).to.equal("9536")
-    expect(unstakingPeriods[12].rewardsGenerationAmount.toString().substring(0, 4)).to.equal("9893")
-    expect(unstakingPeriods[13].rewardsGenerationAmount.toString().substring(0, 4)).to.equal("1000")
+    expect(unstakingPeriods[0].rewardsGeneratingAmount.toString().substring(0, 4)).to.equal("7499")
+    expect(unstakingPeriods[1].rewardsGeneratingAmount.toString().substring(0, 4)).to.equal("7542")
+    expect(unstakingPeriods[2].rewardsGeneratingAmount.toString().substring(0, 4)).to.equal("7578")
+    expect(unstakingPeriods[3].rewardsGeneratingAmount.toString().substring(0, 4)).to.equal("7613")
+    expect(unstakingPeriods[4].rewardsGeneratingAmount.toString().substring(0, 4)).to.equal("7684")
+    expect(unstakingPeriods[5].rewardsGeneratingAmount.toString().substring(0, 4)).to.equal("7756")
+    expect(unstakingPeriods[6].rewardsGeneratingAmount.toString().substring(0, 4)).to.equal("7934")
+    expect(unstakingPeriods[7].rewardsGeneratingAmount.toString().substring(0, 4)).to.equal("8112")
+    expect(unstakingPeriods[8].rewardsGeneratingAmount.toString().substring(0, 4)).to.equal("8468")
+    expect(unstakingPeriods[9].rewardsGeneratingAmount.toString().substring(0, 4)).to.equal("8824")
+    expect(unstakingPeriods[10].rewardsGeneratingAmount.toString().substring(0, 4)).to.equal("9180")
+    expect(unstakingPeriods[11].rewardsGeneratingAmount.toString().substring(0, 4)).to.equal("9536")
+    expect(unstakingPeriods[12].rewardsGeneratingAmount.toString().substring(0, 4)).to.equal("9893")
+    expect(unstakingPeriods[13].rewardsGeneratingAmount.toString().substring(0, 4)).to.equal("1000")
 
     expect((await this.staking.totalBroStaked()).toString().substring(0, 8)).to.equal("11762575")
     expect(await this.staking.globalBroRewardIndex()).to.equal(0)
@@ -251,7 +251,7 @@ describe("Staking V1", function () {
     await this.staking.connect(this.mark).stake(ethers.utils.parseEther("1"), 14)
     staker = await this.staking.getStakerInfo(this.mark.address)
     expect(staker.unstakingPeriods.length).to.equal(14)
-    expect(staker.unstakingPeriods[0].rewardsGenerationAmount.toString().substring(0, 8)).to.equal("14999452")
+    expect(staker.unstakingPeriods[0].rewardsGeneratingAmount.toString().substring(0, 8)).to.equal("14999452")
 
     // must allow to exceed unstakes limit while staking from community bonding
     await this.broToken.connect(this.communityBonding).approve(this.staking.address, ethers.utils.parseEther("1"))
@@ -261,10 +261,10 @@ describe("Staking V1", function () {
 
     staker = await this.staking.getStakerInfo(this.mark.address)
     expect(staker.unstakingPeriods.length).to.equal(15)
-    expect(staker.unstakingPeriods[14].rewardsGenerationAmount.toString().substring(0, 4)).to.equal("7506")
+    expect(staker.unstakingPeriods[14].rewardsGeneratingAmount.toString().substring(0, 4)).to.equal("7506")
   })
 
-  it("should properly handle total staked bro and rewards generation amounts while unstaking", async function () {
+  it("should properly handle total staked bro and rewards generating amounts while unstaking", async function () {
     await this.broToken.connect(this.mark).approve(this.staking.address, ethers.utils.parseEther("2"))
     await this.staking.connect(this.mark).stake(ethers.utils.parseEther("2"), 14)
 
@@ -279,9 +279,9 @@ describe("Staking V1", function () {
     var staker = await this.staking.getStakerInfo(this.mark.address)
     expect(staker.unstakingPeriods.length).to.equal(1)
     expect(staker.withdrawals.length).to.equal(1)
-    expect(staker.unstakingPeriods[0].rewardsGenerationAmount.toString().substring(0, 4)).to.equal("7499")
+    expect(staker.unstakingPeriods[0].rewardsGeneratingAmount.toString().substring(0, 4)).to.equal("7499")
     expect(staker.unstakingPeriods[0].lockedAmount.toString().substring(0, 4)).to.equal("2500")
-    expect(staker.withdrawals[0].rewardsGenerationAmount.toString().substring(0, 4)).to.equal("5000")
+    expect(staker.withdrawals[0].rewardsGeneratingAmount.toString().substring(0, 4)).to.equal("5000")
     expect(staker.withdrawals[0].unstakingPeriod).to.equal(14)
     expect((await this.staking.totalBroStaked()).toString().substring(0, 8)).to.equal("12499726") // 7499 + 5000
 
@@ -302,7 +302,7 @@ describe("Staking V1", function () {
     var staker = await this.staking.getStakerInfo(this.mark.address)
     expect(staker.unstakingPeriods.length).to.equal(1)
     expect(staker.withdrawals.length).to.equal(0)
-    expect(staker.unstakingPeriods[0].rewardsGenerationAmount.toString().substring(0, 8)).to.equal("14999452")
+    expect(staker.unstakingPeriods[0].rewardsGeneratingAmount.toString().substring(0, 8)).to.equal("14999452")
     expect(staker.unstakingPeriods[0].lockedAmount.toString().substring(0, 8)).to.equal("50005479")
     expect((await this.staking.totalBroStaked()).toString().substring(0, 8)).to.equal("14999452")
   })
@@ -319,7 +319,7 @@ describe("Staking V1", function () {
     var staker = await this.staking.getStakerInfo(this.mark.address)
     expect(staker.pendingBroReward.toString()).to.equal("999999999999999999")
     expect(staker.pendingBBroReward.toString()).to.equal("827287671232876")
-    expect(staker.unstakingPeriods[0].rewardsGenerationAmount.toString().substring(0, 8)).to.equal("74997260")
+    expect(staker.unstakingPeriods[0].rewardsGeneratingAmount.toString().substring(0, 8)).to.equal("74997260")
     expect((await this.staking.totalBroStaked()).toString().substring(0, 8)).to.equal("74997260")
 
     await this.staking.connect(this.mark).compound(14)
@@ -327,7 +327,7 @@ describe("Staking V1", function () {
     expect(staker.pendingBroReward.toString()).to.equal("0")
     expect(staker.pendingBBroReward.toString()).to.equal("827287671232876")
     expect((await this.staking.totalBroStaked()).toString().substring(0, 8)).to.equal("14999452")
-    expect(staker.unstakingPeriods[0].rewardsGenerationAmount.toString().substring(0, 8)).to.equal("14999452")
+    expect(staker.unstakingPeriods[0].rewardsGeneratingAmount.toString().substring(0, 8)).to.equal("14999452")
 
     await expect(this.staking.connect(this.mark).compound(14)).to.be.revertedWith("NothingToCompound()")
 
@@ -390,7 +390,7 @@ describe("Staking V1", function () {
 
     staker = await this.staking.getStakerInfo(this.mark.address)
     expect(staker.withdrawals.length).to.equal(6)
-    expect(staker.unstakingPeriods[0].rewardsGenerationAmount.toString()).to.equal("0")
+    expect(staker.unstakingPeriods[0].rewardsGeneratingAmount.toString()).to.equal("0")
     expect(staker.unstakingPeriods[0].lockedAmount.toString()).to.equal("0")
     expect(staker.pendingBBroReward.toString()).to.equal("1240931506849311")
 
@@ -421,7 +421,7 @@ describe("Staking V1", function () {
 
     staker = await this.staking.getStakerInfo(this.mark.address)
     expect(staker.unstakingPeriods.length).to.equal(1)
-    expect(staker.unstakingPeriods[0].rewardsGenerationAmount.toString()).to.equal("0")
+    expect(staker.unstakingPeriods[0].rewardsGeneratingAmount.toString()).to.equal("0")
     expect(staker.unstakingPeriods[0].lockedAmount.toString()).to.equal("0")
     expect(staker.withdrawals.length).to.equal(2)
     expect(staker.pendingBroReward.toString()).to.equal("0")
@@ -473,11 +473,11 @@ describe("Staking V1", function () {
     var totalStaked = BigNumber.from("0")
     for (const staker of [stakerMark, stakerBobo, stakerPaul]) {
       for (let i = 0; i < staker.unstakingPeriods.length; i++) {
-        totalStaked = totalStaked.add(staker.unstakingPeriods[i].rewardsGenerationAmount)
+        totalStaked = totalStaked.add(staker.unstakingPeriods[i].rewardsGeneratingAmount)
       }
 
       for (let j = 0; j < staker.withdrawals.length; j++) {
-        totalStaked = totalStaked.add(staker.withdrawals[j].rewardsGenerationAmount)
+        totalStaked = totalStaked.add(staker.withdrawals[j].rewardsGeneratingAmount)
       }
     }
 
