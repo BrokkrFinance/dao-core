@@ -205,27 +205,55 @@ contract StakingV1 is
             _getStakerWithRecalculatedRewards(_msgSender())
         );
 
-        UnstakingPeriod storage unstakingPeriod = _findUnstakingPeriod(
+        (
+            uint256 currentUnstakingPeriodPos,
+            bool currentExists
+        ) = _findUnstakingPeriod(staker, _currentUnstakingPeriod);
+        if (!currentExists) {
+            revert UnstakingPeriodNotFound(_currentUnstakingPeriod);
+        }
+
+        UnstakingPeriod storage currentUnstakingPeriod = staker
+            .unstakingPeriods[currentUnstakingPeriodPos];
+        totalBroStaked -= currentUnstakingPeriod.rewardsGeneratingAmount;
+
+        (, bool increasedExists) = _findUnstakingPeriod(
             staker,
-            _currentUnstakingPeriod
-        );
-
-        totalBroStaked -= unstakingPeriod.rewardsGeneratingAmount;
-
-        uint256 totalStakedPerUnstakingPeriod = unstakingPeriod
-            .rewardsGeneratingAmount + unstakingPeriod.lockedAmount;
-
-        uint256 newRewardsGeneratingAmount = _calculateRewardsGeneratingBro(
-            totalStakedPerUnstakingPeriod,
             _increasedUnstakingPeriod
         );
+        if (increasedExists) {
+            uint256 totalStakedPerCurrentUnstakingPeriod = currentUnstakingPeriod
+                    .rewardsGeneratingAmount +
+                    currentUnstakingPeriod.lockedAmount;
 
-        totalBroStaked += newRewardsGeneratingAmount;
-        unstakingPeriod.rewardsGeneratingAmount = newRewardsGeneratingAmount;
-        unstakingPeriod.lockedAmount =
-            totalStakedPerUnstakingPeriod -
-            newRewardsGeneratingAmount;
-        unstakingPeriod.unstakingPeriod = _increasedUnstakingPeriod;
+            // existing unstaking period will be adjusted
+            _adjustOrCreateUnstakingPeriod(
+                staker,
+                totalStakedPerCurrentUnstakingPeriod,
+                _increasedUnstakingPeriod,
+                false
+            );
+
+            staker.unstakingPeriods[currentUnstakingPeriodPos] = staker
+                .unstakingPeriods[staker.unstakingPeriods.length - 1];
+            staker.unstakingPeriods.pop();
+        } else {
+            uint256 totalStakedPerUnstakingPeriod = currentUnstakingPeriod
+                .rewardsGeneratingAmount + currentUnstakingPeriod.lockedAmount;
+
+            uint256 newRewardsGeneratingAmount = _calculateRewardsGeneratingBro(
+                totalStakedPerUnstakingPeriod,
+                _increasedUnstakingPeriod
+            );
+
+            totalBroStaked += newRewardsGeneratingAmount;
+            currentUnstakingPeriod
+                .rewardsGeneratingAmount = newRewardsGeneratingAmount;
+            currentUnstakingPeriod.lockedAmount =
+                totalStakedPerUnstakingPeriod -
+                newRewardsGeneratingAmount;
+            currentUnstakingPeriod.unstakingPeriod = _increasedUnstakingPeriod;
+        }
     }
 
     function unstake(uint256 _amount, uint256 _unstakingPeriod)
@@ -237,10 +265,17 @@ contract StakingV1 is
             _getStakerWithRecalculatedRewards(_msgSender())
         );
 
-        UnstakingPeriod storage unstakingPeriod = _findUnstakingPeriod(
+        (uint256 unstakingPeriodPos, bool exists) = _findUnstakingPeriod(
             staker,
             _unstakingPeriod
         );
+        if (!exists) {
+            revert UnstakingPeriodNotFound(_unstakingPeriod);
+        }
+
+        UnstakingPeriod storage unstakingPeriod = staker.unstakingPeriods[
+            unstakingPeriodPos
+        ];
         uint256 totalStakedPerUnstakingPeriod = unstakingPeriod
             .rewardsGeneratingAmount + unstakingPeriod.lockedAmount;
         uint256 withdrawalsByUnstakingPeriodCount = _countWithdrawalsByUnstakingPeriod(
@@ -662,16 +697,18 @@ contract StakingV1 is
     function _findUnstakingPeriod(
         Staker storage _staker,
         uint256 _unstakingPeriod
-    ) private view returns (UnstakingPeriod storage) {
+    ) private view returns (uint256 index, bool exists) {
         for (uint256 i = 0; i < _staker.unstakingPeriods.length; i++) {
             if (
                 _staker.unstakingPeriods[i].unstakingPeriod == _unstakingPeriod
             ) {
-                return _staker.unstakingPeriods[i];
+                index = i;
+                exists = true;
+                return (index, exists);
             }
         }
 
-        revert UnstakingPeriodNotFound(_unstakingPeriod);
+        return (0, false);
     }
 
     function _countWithdrawalsByUnstakingPeriod(

@@ -539,7 +539,7 @@ describe("Staking V1", function () {
   })
 
   it("should properly increase unstaking period", async function () {
-    await this.broToken.connect(this.mark).approve(this.staking.address, ethers.utils.parseEther("1"))
+    await this.broToken.connect(this.mark).approve(this.staking.address, ethers.utils.parseEther("2"))
     await this.staking.connect(this.mark).stake(ethers.utils.parseEther("1"), 14)
 
     var staker = await this.staking.getStakerInfo(this.mark.address)
@@ -561,6 +561,17 @@ describe("Staking V1", function () {
     await expect(this.staking.connect(this.mark).increaseUnstakingPeriod(14, 366)).to.be.revertedWith(
       "Invalid unstaking period"
     )
+
+    await this.staking.connect(this.mark).stake(ethers.utils.parseEther("1"), 14)
+
+    var staker = await this.staking.getStakerInfo(this.mark.address)
+    expect(staker.unstakingPeriods.length).to.equal(2)
+
+    await this.staking.connect(this.mark).increaseUnstakingPeriod(14, 365)
+    var staker = await this.staking.getStakerInfo(this.mark.address)
+    expect(staker.unstakingPeriods.length).to.equal(1)
+    expect(staker.unstakingPeriods[0].rewardsGeneratingAmount.toString().substring(0, 4)).to.equal("2000")
+    expect((await this.staking.totalBroStaked()).toString().substring(0, 4)).to.equal("2000")
   })
 
   after(async function () {
