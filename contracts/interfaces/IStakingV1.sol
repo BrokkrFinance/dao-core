@@ -5,8 +5,8 @@ interface IStakingV1 {
     error NothingToCompound();
     error NothingToWithdraw();
     error NothingToClaim();
-    error UnstakesLimitWasReached();
-    error UnstakeNotFound(uint256 unstakingPeriod);
+    error UnstakingPeriodsLimitWasReached();
+    error UnstakingPeriodNotFound(uint256 unstakingPeriod);
     error WithdrawalsLimitWasReached();
     error WithdrawalNotFound(uint256 amount);
 
@@ -48,8 +48,8 @@ interface IStakingV1 {
         uint256 minBroStakeAmount_;
         uint256 minUnstakingPeriod_;
         uint256 maxUnstakingPeriod_;
-        uint8 maxUnstakesPerStaker_;
-        uint8 maxWithdrawalsPerUnstake_;
+        uint8 maxUnstakingPeriodsPerStaker_;
+        uint8 maxWithdrawalsPerUnstakingPeriod_;
         uint256 rewardGeneratingAmountBaseIndex_;
         uint256 withdrawalAmountReducePerc_;
         uint256 withdrawnBBroRewardReducePerc_;
@@ -64,7 +64,7 @@ interface IStakingV1 {
         uint256 unstakingPeriod;
     }
 
-    struct Unstake {
+    struct UnstakingPeriod {
         uint256 rewardsGeneratingAmount;
         uint256 lockedAmount;
         uint256 unstakingPeriod;
@@ -75,7 +75,7 @@ interface IStakingV1 {
         uint256 pendingBroReward;
         uint256 pendingBBroReward;
         uint256 lastRewardsClaimTimestamp;
-        Unstake[] unstakingPeriods;
+        UnstakingPeriod[] unstakingPeriods;
         Withdrawal[] withdrawals;
     }
 
@@ -88,6 +88,11 @@ interface IStakingV1 {
     ) external;
 
     function compound(uint256 _unstakingPeriod) external;
+
+    function increaseUnstakingPeriod(
+        uint256 _currentUnstakingPeriod,
+        uint256 _increasedUnstakingPeriod
+    ) external;
 
     function unstake(uint256 _amount, uint256 _unstakingPeriod) external;
 

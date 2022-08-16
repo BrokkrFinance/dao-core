@@ -295,6 +295,10 @@ contract BondingV1 is
         _unpause();
     }
 
+    function setDistributor(address _newDistributor) external onlyOwner {
+        _setDistributor(_newDistributor);
+    }
+
     function supportsDistributions() public pure returns (bool) {
         return true;
     }

@@ -155,6 +155,9 @@ describe("Bonding V1", function () {
     expect((await this.bonding.getBondOptions()).length).to.equal(1)
     expect(await this.broToken.balanceOf(this.bonding.address)).to.equal(0)
 
+    await this.bonding.setDistributor(this.mark.address)
+    expect(await this.bonding.distributor()).to.equal(this.mark.address)
+
     // onlyOwner checks
     await expect(
       this.bonding.connect(this.mark).enableBondOption(this.wAvax.address, { from: this.mark.address })
@@ -174,6 +177,9 @@ describe("Bonding V1", function () {
       this.bonding.connect(this.mark).removeBondOption(this.wAvax.address, { from: this.mark.address })
     ).to.be.revertedWith("Ownable: caller is not the owner")
     await expect(this.bonding.connect(this.mark).setMinBroPayout(10)).to.be.revertedWith(
+      "Ownable: caller is not the owner"
+    )
+    await expect(this.bonding.connect(this.mark).setDistributor(this.mark.address)).to.be.revertedWith(
       "Ownable: caller is not the owner"
     )
   })

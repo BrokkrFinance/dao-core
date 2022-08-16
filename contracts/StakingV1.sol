@@ -36,8 +36,8 @@ contract StakingV1 is
     uint256 public minUnstakingPeriod;
     uint256 public maxUnstakingPeriod;
 
-    uint8 public maxUnstakesPerStaker;
-    uint8 public maxWithdrawalsPerUnstake;
+    uint8 public maxUnstakingPeriodsPerStaker;
+    uint8 public maxWithdrawalsPerUnstakingPeriod;
 
     uint256 public rewardGeneratingAmountBaseIndex; // .0000 number
     uint256 public withdrawalAmountReducePerc; // .00 number
@@ -78,9 +78,16 @@ contract StakingV1 is
         minUnstakingPeriod = initParams_.minUnstakingPeriod_;
         maxUnstakingPeriod = initParams_.maxUnstakingPeriod_;
 
-        maxUnstakesPerStaker = initParams_.maxUnstakesPerStaker_;
-        maxWithdrawalsPerUnstake = initParams_.maxWithdrawalsPerUnstake_;
+        maxUnstakingPeriodsPerStaker = initParams_
+            .maxUnstakingPeriodsPerStaker_;
+        maxWithdrawalsPerUnstakingPeriod = initParams_
+            .maxWithdrawalsPerUnstakingPeriod_;
 
+        require(
+            initParams_.rewardGeneratingAmountBaseIndex_ > 0 &&
+                initParams_.rewardGeneratingAmountBaseIndex_ <= 10000,
+            "Invalid decimals"
+        );
         rewardGeneratingAmountBaseIndex =
             (initParams_.rewardGeneratingAmountBaseIndex_ * PRECISION) /
             10_000;
@@ -88,6 +95,11 @@ contract StakingV1 is
         withdrawnBBroRewardReducePerc = initParams_
             .withdrawnBBroRewardReducePerc_;
 
+        require(
+            initParams_.bBroRewardsBaseIndex_ > 0 &&
+                initParams_.bBroRewardsBaseIndex_ <= 10000,
+            "Invalid decimals"
+        );
         bBroRewardsBaseIndex =
             (initParams_.bBroRewardsBaseIndex_ * PRECISION) /
             10_000;
@@ -123,7 +135,12 @@ contract StakingV1 is
             _getStakerWithRecalculatedRewards(_msgSender())
         );
 
-        _adjustOrCreateUnstake(staker, _amount, _unstakingPeriod, false);
+        _adjustOrCreateUnstakingPeriod(
+            staker,
+            _amount,
+            _unstakingPeriod,
+            false
+        );
         emit Staked(_msgSender(), _amount, _unstakingPeriod);
     }
 
@@ -143,7 +160,7 @@ contract StakingV1 is
             _getStakerWithRecalculatedRewards(_stakerAddress)
         );
 
-        _adjustOrCreateUnstake(staker, _amount, _unstakingPeriod, true);
+        _adjustOrCreateUnstakingPeriod(staker, _amount, _unstakingPeriod, true);
         emit CommunityBondStaked(_msgSender(), _amount, _unstakingPeriod);
     }
 
@@ -160,8 +177,55 @@ contract StakingV1 is
         uint256 broReward = staker.pendingBroReward;
         staker.pendingBroReward = 0;
 
-        _adjustOrCreateUnstake(staker, broReward, _unstakingPeriod, false);
+        _adjustOrCreateUnstakingPeriod(
+            staker,
+            broReward,
+            _unstakingPeriod,
+            false
+        );
         emit Compounded(_msgSender(), broReward, _unstakingPeriod);
+    }
+
+    function increaseUnstakingPeriod(
+        uint256 _currentUnstakingPeriod,
+        uint256 _increasedUnstakingPeriod
+    ) external whenNotPaused {
+        require(
+            _currentUnstakingPeriod < _increasedUnstakingPeriod,
+            "Unstaking period can only be increased"
+        );
+        require(
+            _increasedUnstakingPeriod >= minUnstakingPeriod &&
+                _increasedUnstakingPeriod <= maxUnstakingPeriod,
+            "Invalid unstaking period"
+        );
+
+        Staker storage staker = _updateStaker(
+            _msgSender(),
+            _getStakerWithRecalculatedRewards(_msgSender())
+        );
+
+        UnstakingPeriod storage unstakingPeriod = _findUnstakingPeriod(
+            staker,
+            _currentUnstakingPeriod
+        );
+
+        totalBroStaked -= unstakingPeriod.rewardsGeneratingAmount;
+
+        uint256 totalStakedPerUnstakingPeriod = unstakingPeriod
+            .rewardsGeneratingAmount + unstakingPeriod.lockedAmount;
+
+        uint256 newRewardsGeneratingAmount = _calculateRewardsGeneratingBro(
+            totalStakedPerUnstakingPeriod,
+            _increasedUnstakingPeriod
+        );
+
+        totalBroStaked += newRewardsGeneratingAmount;
+        unstakingPeriod.rewardsGeneratingAmount = newRewardsGeneratingAmount;
+        unstakingPeriod.lockedAmount =
+            totalStakedPerUnstakingPeriod -
+            newRewardsGeneratingAmount;
+        unstakingPeriod.unstakingPeriod = _increasedUnstakingPeriod;
     }
 
     function unstake(uint256 _amount, uint256 _unstakingPeriod)
@@ -173,11 +237,11 @@ contract StakingV1 is
             _getStakerWithRecalculatedRewards(_msgSender())
         );
 
-        Unstake storage unstakingPeriod = _findUnstakingPeriod(
+        UnstakingPeriod storage unstakingPeriod = _findUnstakingPeriod(
             staker,
             _unstakingPeriod
         );
-        uint256 totalStakedPerUnstake = unstakingPeriod
+        uint256 totalStakedPerUnstakingPeriod = unstakingPeriod
             .rewardsGeneratingAmount + unstakingPeriod.lockedAmount;
         uint256 withdrawalsByUnstakingPeriodCount = _countWithdrawalsByUnstakingPeriod(
                 staker,
@@ -185,17 +249,20 @@ contract StakingV1 is
             );
 
         require(
-            totalStakedPerUnstake > 0 && _amount <= totalStakedPerUnstake,
+            totalStakedPerUnstakingPeriod > 0 &&
+                _amount <= totalStakedPerUnstakingPeriod,
             "Unstake amount must be less then total staked amount per unstake"
         );
         require(
-            withdrawalsByUnstakingPeriodCount < maxWithdrawalsPerUnstake,
+            withdrawalsByUnstakingPeriodCount <
+                maxWithdrawalsPerUnstakingPeriod,
             "Withdrawals limit reached. Wait until one of them will be released"
         );
 
         if (
-            withdrawalsByUnstakingPeriodCount == maxWithdrawalsPerUnstake - 1 &&
-            _amount != totalStakedPerUnstake
+            withdrawalsByUnstakingPeriodCount ==
+            maxWithdrawalsPerUnstakingPeriod - 1 &&
+            _amount != totalStakedPerUnstakingPeriod
         ) {
             revert WithdrawalsLimitWasReached();
         }
@@ -211,14 +278,15 @@ contract StakingV1 is
 
         totalBroStaked -= unstakingPeriod.rewardsGeneratingAmount;
 
-        uint256 reducedTotalStakedPerUnstake = totalStakedPerUnstake - _amount;
+        uint256 reducedTotalStakedPerUnstakingPeriod = totalStakedPerUnstakingPeriod -
+                _amount;
         unstakingPeriod
             .rewardsGeneratingAmount = _calculateRewardsGeneratingBro(
-            reducedTotalStakedPerUnstake,
+            reducedTotalStakedPerUnstakingPeriod,
             _unstakingPeriod
         );
         unstakingPeriod.lockedAmount =
-            reducedTotalStakedPerUnstake -
+            reducedTotalStakedPerUnstakingPeriod -
             unstakingPeriod.rewardsGeneratingAmount;
         staker.withdrawals.push(withdrawal);
 
@@ -264,7 +332,7 @@ contract StakingV1 is
             revert NothingToWithdraw();
         }
 
-        // remove empty unstakes
+        // remove empty unstaking periods
         uint256 k = 0;
         while (k < staker.unstakingPeriods.length) {
             uint256 withdrawalsByUnstakingPeriodLeft = _countWithdrawalsByUnstakingPeriod(
@@ -320,7 +388,7 @@ contract StakingV1 is
             ];
             staker.withdrawals.pop();
 
-            _adjustOrCreateUnstake(
+            _adjustOrCreateUnstakingPeriod(
                 staker,
                 totalWithdrewAmount,
                 _unstakingPeriod,
@@ -419,16 +487,13 @@ contract StakingV1 is
             PRECISION -
             rewardGeneratingAmountBaseIndex;
 
-        uint256 rewardsGenerationPerBro = rewardGeneratingAmountBaseIndex +
+        uint256 rewardsGeneratingPerBro = rewardGeneratingAmountBaseIndex +
             ((xtraRewardGeneratingAmountIndex * periodIndex) / PRECISION);
 
-        return (_amount * rewardsGenerationPerBro) / PRECISION;
+        return (_amount * rewardsGeneratingPerBro) / PRECISION;
     }
 
     // bro and bbro rewards calculations
-    // bro rewards formula: (staked_bro * global_index) - (staked_bro * staker_reward_index)
-    // bbro  rewards formula:
-    // (((base + xtra_mult * unstaking_period^2 * 10^(-6)) * staked_bro) / 365) * unclaimed_epochs
     function _calculateStakerRewards(Staker memory _staker)
         private
         view
@@ -440,7 +505,7 @@ contract StakingV1 is
             _staker.lastRewardsClaimTimestamp) / epoch;
 
         for (uint256 i = 0; i < _staker.unstakingPeriods.length; i++) {
-            Unstake memory unstaking = _staker.unstakingPeriods[i];
+            UnstakingPeriod memory unstaking = _staker.unstakingPeriods[i];
 
             _staker.pendingBroReward += _computeBroReward(
                 unstaking.rewardsGeneratingAmount,
@@ -505,17 +570,18 @@ contract StakingV1 is
         return _staker;
     }
 
+    // bro rewards formula: staked_bro * (global_index - staker_reward_index)
     function _computeBroReward(
         uint256 _rewardsGeneratingBroAmount,
         uint256 _stakerRewardIndex
     ) private view returns (uint256) {
         return
             (_rewardsGeneratingBroAmount *
-                globalBroRewardIndex -
-                _rewardsGeneratingBroAmount *
-                _stakerRewardIndex) / PRECISION;
+                (globalBroRewardIndex - _stakerRewardIndex)) / PRECISION;
     }
 
+    // bbro  rewards formula:
+    // (((base + xtra_mult * unstaking_period^2 * 10^(-6)) * staked_bro) / 365) * unclaimed_epochs
     function _computeBBroReward(
         uint256 _totalBroStakedAmount,
         uint256 _unstakingPeriod,
@@ -530,7 +596,7 @@ contract StakingV1 is
         return bBroPerEpochReward * _unclaimedEpochs;
     }
 
-    function _adjustOrCreateUnstake(
+    function _adjustOrCreateUnstakingPeriod(
         Staker storage _staker,
         uint256 _amount,
         uint256 _unstakingPeriod,
@@ -544,12 +610,12 @@ contract StakingV1 is
                 .unstakingPeriods[i]
                 .rewardsGeneratingAmount;
 
-            uint256 totalStakedPerUnstake = _amount +
+            uint256 totalStakedPerUnstakingPeriod = _amount +
                 _staker.unstakingPeriods[i].rewardsGeneratingAmount +
                 _staker.unstakingPeriods[i].lockedAmount;
 
             uint256 newRewardsGeneratingAmount = _calculateRewardsGeneratingBro(
-                totalStakedPerUnstake,
+                totalStakedPerUnstakingPeriod,
                 _unstakingPeriod
             );
 
@@ -557,7 +623,7 @@ contract StakingV1 is
                 .unstakingPeriods[i]
                 .rewardsGeneratingAmount = newRewardsGeneratingAmount;
             _staker.unstakingPeriods[i].lockedAmount =
-                totalStakedPerUnstake -
+                totalStakedPerUnstakingPeriod -
                 newRewardsGeneratingAmount;
             totalBroStaked += newRewardsGeneratingAmount;
 
@@ -573,9 +639,9 @@ contract StakingV1 is
 
         if (
             !_fromCommunityBonding &&
-            _staker.unstakingPeriods.length >= maxUnstakesPerStaker
+            _staker.unstakingPeriods.length >= maxUnstakingPeriodsPerStaker
         ) {
-            revert UnstakesLimitWasReached();
+            revert UnstakingPeriodsLimitWasReached();
         }
 
         uint256 rewardsGeneratingBro = _calculateRewardsGeneratingBro(
@@ -584,7 +650,7 @@ contract StakingV1 is
         );
 
         _staker.unstakingPeriods.push(
-            Unstake(
+            UnstakingPeriod(
                 rewardsGeneratingBro,
                 _amount - rewardsGeneratingBro,
                 _unstakingPeriod
@@ -596,7 +662,7 @@ contract StakingV1 is
     function _findUnstakingPeriod(
         Staker storage _staker,
         uint256 _unstakingPeriod
-    ) private view returns (Unstake storage) {
+    ) private view returns (UnstakingPeriod storage) {
         for (uint256 i = 0; i < _staker.unstakingPeriods.length; i++) {
             if (
                 _staker.unstakingPeriods[i].unstakingPeriod == _unstakingPeriod
@@ -605,7 +671,7 @@ contract StakingV1 is
             }
         }
 
-        revert UnstakeNotFound(_unstakingPeriod);
+        revert UnstakingPeriodNotFound(_unstakingPeriod);
     }
 
     function _countWithdrawalsByUnstakingPeriod(
@@ -662,18 +728,16 @@ contract StakingV1 is
         maxUnstakingPeriod = _newMaxUnstakingPeriod;
     }
 
-    function setMaxUnstakesPerStaker(uint8 _newMaxUnstakesPerStaker)
-        external
-        onlyOwner
-    {
-        maxUnstakesPerStaker = _newMaxUnstakesPerStaker;
+    function setMaxUnstakingPeriodsPerStaker(
+        uint8 _newMaxUnstakingPeriodsPerStaker
+    ) external onlyOwner {
+        maxUnstakingPeriodsPerStaker = _newMaxUnstakingPeriodsPerStaker;
     }
 
-    function setMaxWithdrawalsPerUnstake(uint8 _newMaxWithdrawalsPerUnstake)
-        external
-        onlyOwner
-    {
-        maxWithdrawalsPerUnstake = _newMaxWithdrawalsPerUnstake;
+    function setMaxWithdrawalsPerUnstakingPeriod(
+        uint8 _newMaxWithdrawalsPerUnstakingPeriod
+    ) external onlyOwner {
+        maxWithdrawalsPerUnstakingPeriod = _newMaxWithdrawalsPerUnstakingPeriod;
     }
 
     function setRewardGeneratingAmountBaseIndex(
