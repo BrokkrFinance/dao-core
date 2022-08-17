@@ -59,9 +59,9 @@ contract BBroPremiumStakingRewardsDistributor is Ownable {
         require(broAmountForReward > 0, "Nothing to claim");
 
         uint256 xtraBBroReward = _calculateXtraBBroReward(broAmountForReward);
-        bBroToken.mint(_msgSender(), xtraBBroReward);
 
         claims[_msgSender()] = true;
+        bBroToken.mint(_msgSender(), xtraBBroReward);
     }
 
     function _getAmountForReward(address _staker)
@@ -69,7 +69,7 @@ contract BBroPremiumStakingRewardsDistributor is Ownable {
         view
         returns (uint256)
     {
-        uint256 amountForReward;
+        uint256 amountForReward = 0;
 
         IStakingV1.Staker memory staker = staking.getStakerInfo(_staker);
         for (uint256 i = 0; i < staker.unstakingPeriods.length; i++) {
