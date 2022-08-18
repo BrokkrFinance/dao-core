@@ -18,7 +18,10 @@ contract BBroPremiumStakingRewardsDistributor is Ownable {
     uint16 public bBroRewardsXtraMultiplier;
     uint256 public amountOfEpochsForXtraReward;
 
+    uint256 public terraMigratorExtraPerc; // .00 number
+
     mapping(address => bool) private claims;
+    mapping(address => bool) private terraMigratorsWhitelist;
 
     constructor(
         address bBroToken_,
@@ -28,7 +31,8 @@ contract BBroPremiumStakingRewardsDistributor is Ownable {
         uint256 unstakingPeriodForXtraRewards_,
         uint256 bBroRewardsBaseIndex_,
         uint16 bBroRewardsXtraMultiplier_,
-        uint256 amountOfEpochsForXtraReward_
+        uint256 amountOfEpochsForXtraReward_,
+        uint256 terraMigratorExtraPerc_
     ) {
         bBroToken = IERC20Mintable(bBroToken_);
         staking = IStakingV1(staking_);
@@ -38,6 +42,7 @@ contract BBroPremiumStakingRewardsDistributor is Ownable {
         bBroRewardsBaseIndex = bBroRewardsBaseIndex_;
         bBroRewardsXtraMultiplier = bBroRewardsXtraMultiplier_;
         amountOfEpochsForXtraReward = amountOfEpochsForXtraReward_;
+        terraMigratorExtraPerc = 100 + terraMigratorExtraPerc_;
     }
 
     modifier onlyWhenEventIsNotOver() {
@@ -59,9 +64,21 @@ contract BBroPremiumStakingRewardsDistributor is Ownable {
         require(broAmountForReward > 0, "Nothing to claim");
 
         uint256 xtraBBroReward = _calculateXtraBBroReward(broAmountForReward);
+        if (terraMigratorsWhitelist[_msgSender()]) {
+            xtraBBroReward = (xtraBBroReward * terraMigratorExtraPerc) / 100;
+        }
 
         claims[_msgSender()] = true;
         bBroToken.mint(_msgSender(), xtraBBroReward);
+    }
+
+    function batchWhitelistTerraMigrators(address[] calldata _accounts)
+        external
+        onlyOwner
+    {
+        for (uint256 i = 0; i < _accounts.length; i++) {
+            terraMigratorsWhitelist[_accounts[i]] = true;
+        }
     }
 
     function _getAmountForReward(address _staker)
@@ -106,10 +123,21 @@ contract BBroPremiumStakingRewardsDistributor is Ownable {
         view
         returns (uint256)
     {
-        return _calculateXtraBBroReward(_getAmountForReward(_account));
+        uint256 xtraBBroReward = _calculateXtraBBroReward(
+            _getAmountForReward(_account)
+        );
+        if (terraMigratorsWhitelist[_account]) {
+            xtraBBroReward = (xtraBBroReward * terraMigratorExtraPerc) / 100;
+        }
+
+        return xtraBBroReward;
     }
 
     function isClaimed(address _account) public view returns (bool) {
         return claims[_account];
+    }
+
+    function isWhitelisted(address _account) public view returns (bool) {
+        return terraMigratorsWhitelist[_account];
     }
 }

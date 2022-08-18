@@ -29,7 +29,8 @@ describe("BBroPremiumStakingRewards", function () {
       365,
       3000,
       10,
-      30
+      30,
+      5
     )
     await this.rewards.deployed()
 
@@ -51,6 +52,24 @@ describe("BBroPremiumStakingRewards", function () {
     await setBlockchainTime(ethers.provider, currentTime)
 
     await expect(this.rewards.connect(this.paul).claim()).to.be.revertedWith("Xtra rewards event is over")
+  })
+
+  it("should allow whitelisted accounts to claim with extra perc", async function () {
+    expect(await this.rewards.availableBBroAmountToClaim(this.mark.address)).to.equal("60")
+    expect(await this.rewards.availableBBroAmountToClaim(this.paul.address)).to.equal(0)
+    expect(await this.rewards.isWhitelisted(this.mark.address)).to.equal(false)
+
+    // whitelist
+    await this.rewards.batchWhitelistTerraMigrators([this.mark.address, this.paul.address])
+
+    expect(await this.rewards.isWhitelisted(this.mark.address)).to.equal(true)
+    expect(await this.rewards.isWhitelisted(this.paul.address)).to.equal(true)
+    expect(await this.rewards.availableBBroAmountToClaim(this.mark.address)).to.equal("63") // 5% increase
+    expect(await this.rewards.availableBBroAmountToClaim(this.paul.address)).to.equal(0)
+
+    await this.rewards.connect(this.mark).claim()
+    expect(await this.bbroToken.balanceOf(this.mark.address)).to.equal("63")
+    expect(await this.rewards.isClaimed(this.mark.address)).to.equal(true)
   })
 
   after(async function () {
