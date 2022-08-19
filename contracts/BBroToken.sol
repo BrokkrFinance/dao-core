@@ -1,11 +1,12 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "./interfaces/IERC20Mintable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20BurnableUpgradeable.sol";
+import { IERC20Mintable } from "./interfaces/IERC20Mintable.sol";
+
+import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import { ERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import { ERC20BurnableUpgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20BurnableUpgradeable.sol";
 
 contract BBroToken is
     ERC20BurnableUpgradeable,
@@ -24,7 +25,7 @@ contract BBroToken is
     }
 
     modifier onlyWhitelisted() {
-        require(whitelist[msg.sender], "Address is not whitelisted.");
+        require(whitelist[_msgSender()], "Address is not whitelisted.");
         _;
     }
 
@@ -39,9 +40,7 @@ contract BBroToken is
 
     function _authorizeUpgrade(
         address /* newImplementation */
-    ) internal virtual override {
-        require(owner() == msg.sender, "Upgrade is not authorized");
-    }
+    ) internal virtual override onlyOwner {}
 
     function whitelistAddress(address _account) external onlyOwner {
         whitelist[_account] = true;

@@ -1,12 +1,13 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "./interfaces/IEpochManager.sol";
-import "./interfaces/IDistributionHandler.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/security/Pausable.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { IEpochManager } from "./interfaces/IEpochManager.sol";
+import { IDistributionHandler } from "./interfaces/IDistributionHandler.sol";
+
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { Pausable } from "@openzeppelin/contracts/security/Pausable.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 contract TokenDistributor is Ownable, Pausable {
     using SafeERC20 for IERC20;
@@ -127,11 +128,11 @@ contract TokenDistributor is Ownable, Pausable {
         );
     }
 
-    function pause() external onlyOwner whenNotPaused {
+    function pause() external onlyOwner {
         _pause();
     }
 
-    function unpause() external onlyOwner whenPaused {
+    function unpause() external onlyOwner {
         _unpause();
     }
 

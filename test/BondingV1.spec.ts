@@ -8,6 +8,7 @@ describe("Bonding V1", function () {
     this.EpochManager = await ethers.getContractFactory("EpochManager")
     this.BroToken = await ethers.getContractFactory("BroToken")
     this.MockPriceOracle = await ethers.getContractFactory("MockPriceOracle")
+    this.MockStakingV1 = await ethers.getContractFactory("MockStakingV1")
     this.BondingV1 = await ethers.getContractFactory("BondingV1")
     this.signers = await ethers.getSigners()
     this.owner = this.signers[0]
@@ -35,6 +36,9 @@ describe("Bonding V1", function () {
     this.mockPriceOracle = await this.MockPriceOracle.deploy()
     await this.mockPriceOracle.deployed()
 
+    this.mockStaking = await this.MockStakingV1.deploy()
+    await this.mockStaking.deployed()
+
     this.bonding = await upgrades.deployProxy(this.BondingV1, [
       this.epochManager.address,
       this.broToken.address,
@@ -46,6 +50,13 @@ describe("Bonding V1", function () {
   })
 
   it("should allow only owner to properly modify bonding options", async function () {
+    expect(await this.bonding.approveTo()).to.equal(this.treasury.address)
+    expect(await this.bonding.supportsDistributions()).to.equal(true)
+
+    expect(await this.bonding.minBroPayout()).to.equal(100)
+    await this.bonding.setMinBroPayout(101)
+    expect(await this.bonding.minBroPayout()).to.equal(101)
+
     // add
     await expect(
       this.bonding.addBondOption(this.broToken.address, this.mockPriceOracle.address, 100)
@@ -58,6 +69,13 @@ describe("Bonding V1", function () {
     await expect(this.bonding.addBondOption(this.wAvax.address, this.mockPriceOracle.address, 5)).to.be.revertedWith(
       "Bond option already exists"
     )
+
+    var bondOption0 = await this.bonding.getBondOptionByIndex(0)
+    expect(bondOption0.enabled).to.equal(true)
+    expect(bondOption0.token).to.equal(this.wAvax.address)
+    expect(bondOption0.oracle).to.equal(this.mockPriceOracle.address)
+    expect(bondOption0.discount).to.equal(105)
+    expect(bondOption0.bondingBalance).to.equal(BigNumber.from("0"))
 
     var bondOptions = await this.bonding.getBondOptions()
     expect(bondOptions.length).to.equal(1)
@@ -87,10 +105,10 @@ describe("Bonding V1", function () {
 
     await this.bonding.removeBondOption(this.teslaToken.address)
     await expect(this.bonding.enableBondOption(this.teslaToken.address)).to.be.revertedWith(
-      "Bonding option doesn't exists"
+      `BondingOptionNotFound("${this.teslaToken.address}")`
     )
     await expect(this.bonding.disableBondOption(this.teslaToken.address)).to.be.revertedWith(
-      "Bonding option doesn't exists"
+      `BondingOptionNotFound("${this.teslaToken.address}")`
     )
 
     // update discount
@@ -98,7 +116,7 @@ describe("Bonding V1", function () {
       "Wrong discount precision"
     )
     await expect(this.bonding.updateBondDiscount(this.teslaToken.address, 10)).to.be.revertedWith(
-      "Bonding option doesn't exists"
+      `BondingOptionNotFound("${this.teslaToken.address}")`
     )
 
     await this.bonding.updateBondDiscount(this.wAvax.address, 10)
@@ -111,21 +129,34 @@ describe("Bonding V1", function () {
       .transfer(this.bonding.address, 100, { from: this.distributor.address })
     await this.bonding.connect(this.distributor).handleDistribution(100, { from: this.distributor.address })
     await this.bonding.addBondOption(this.teslaToken.address, this.mockPriceOracle.address, 5)
-    expect(await this.bonding.getDisabledBondOptionsCount()).to.equal(0)
+    expect(await this.bonding.disabledBondOptions()).to.equal(0)
     expect((await this.bonding.getBondOptions())[0].bondingBalance).to.equal(BigNumber.from("100"))
     expect((await this.bonding.getBondOptions())[1].bondingBalance).to.equal(BigNumber.from("0"))
     expect(await this.broToken.balanceOf(this.bonding.address)).to.equal(100)
 
     await expect(this.bonding.removeBondOption(this.broToken.address)).to.be.revertedWith(
-      "Bonding option doesn't exists"
+      `BondingOptionNotFound("${this.broToken.address}")`
     )
 
     await this.bonding.removeBondOption(this.teslaToken.address)
     expect((await this.bonding.getBondOptions()).length).to.equal(1)
 
     await expect(this.bonding.removeBondOption(this.wAvax.address)).to.be.revertedWith(
-      "At least one bonding option should exist"
+      "At least one enabled bonding option should exist"
     )
+
+    await this.bonding.addBondOption(this.teslaToken.address, this.mockPriceOracle.address, 5)
+    expect((await this.bonding.getBondOptions()).length).to.equal(2)
+    await this.bonding.disableBondOption(this.wAvax.address)
+    expect(await this.bonding.disabledBondOptions()).to.equal(1)
+
+    await this.bonding.removeBondOption(this.wAvax.address)
+    expect(await this.bonding.disabledBondOptions()).to.equal(0)
+    expect((await this.bonding.getBondOptions()).length).to.equal(1)
+    expect(await this.broToken.balanceOf(this.bonding.address)).to.equal(0)
+
+    await this.bonding.setDistributor(this.mark.address)
+    expect(await this.bonding.distributor()).to.equal(this.mark.address)
 
     // onlyOwner checks
     await expect(
@@ -145,6 +176,24 @@ describe("Bonding V1", function () {
     await expect(
       this.bonding.connect(this.mark).removeBondOption(this.wAvax.address, { from: this.mark.address })
     ).to.be.revertedWith("Ownable: caller is not the owner")
+    await expect(this.bonding.connect(this.mark).setMinBroPayout(10)).to.be.revertedWith(
+      "Ownable: caller is not the owner"
+    )
+    await expect(this.bonding.connect(this.mark).setDistributor(this.mark.address)).to.be.revertedWith(
+      "Ownable: caller is not the owner"
+    )
+  })
+
+  it("should not allow to use it's functionality when paused", async function () {
+    expect(await this.bonding.paused()).to.equal(false)
+    await this.bonding.pause()
+    expect(await this.bonding.paused()).to.equal(true)
+
+    await expect(this.bonding.bond(this.wAvax.address, 100)).to.be.revertedWith("Pausable: paused")
+    await expect(this.bonding.claim()).to.be.revertedWith("Pausable: paused")
+
+    await this.bonding.unpause()
+    expect(await this.bonding.paused()).to.equal(false)
   })
 
   it("should allow only owner to properly set bonding mode", async function () {
@@ -155,18 +204,18 @@ describe("Bonding V1", function () {
     expect(vestingPeriod).to.equal(BigNumber.from("100"))
 
     // set community
-    await this.bonding.setCommunityMode(this.mark.address, 150)
+    await this.bonding.setCommunityMode(this.mockStaking.address, 150)
     expect(await this.bonding.getBondingMode()).to.equal(1)
     const [epochsUnstake, stakingAddr] = await this.bonding.getModeConfig()
     expect(epochsUnstake).to.equal(150)
-    expect(stakingAddr).to.equal(this.mark.address)
+    expect(stakingAddr).to.equal(this.mockStaking.address)
 
     // onlyOwner checks
     await expect(this.bonding.connect(this.mark).setNormalMode(100, { from: this.mark.address })).to.be.revertedWith(
       "Ownable: caller is not the owner"
     )
     await expect(
-      this.bonding.connect(this.mark).setCommunityMode(this.mark.address, 150, { from: this.mark.address })
+      this.bonding.connect(this.mark).setCommunityMode(this.mockStaking.address, 150, { from: this.mark.address })
     ).to.be.revertedWith("Ownable: caller is not the owner")
   })
 
@@ -226,7 +275,9 @@ describe("Bonding V1", function () {
 
     await expect(
       this.bonding.connect(this.mark).bond(this.wEth.address, 150, { from: this.mark.address })
-    ).to.be.revertedWith("Bonding option doesn't exists")
+    ).to.be.revertedWith(`BondingOptionNotFound("${this.wEth.address}")`)
+
+    expect(await this.bonding.simulateBond(this.wAvax.address, 100)).to.equal("210")
 
     await this.wAvax.connect(this.mark).approve(this.bonding.address, 100)
     await this.bonding.connect(this.mark).bond(this.wAvax.address, 100, { from: this.mark.address })
@@ -273,6 +324,14 @@ describe("Bonding V1", function () {
     await this.bonding.connect(this.mark).claim({ from: this.mark.address })
     expect(await this.broToken.balanceOf(this.mark.address)).to.equal(2410)
     expect((await this.bonding.getClaims(this.mark.address)).length).to.equal(0)
+
+    // set community mode
+    await this.bonding.setCommunityMode(this.mockStaking.address, 100)
+    expect(await this.bonding.getBondingMode()).to.equal(1)
+
+    await this.wAvax.connect(this.mark).approve(this.bonding.address, 100)
+    await this.bonding.connect(this.mark).bond(this.wAvax.address, 100, { from: this.mark.address })
+    expect(await this.broToken.allowance(this.bonding.address, this.mockStaking.address)).to.equal(210)
   })
 
   after(async function () {

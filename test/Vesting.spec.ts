@@ -28,6 +28,11 @@ describe("Vesting", function () {
     await this.vesting.registerSchedules(accounts, schedules)
     expect(await this.vesting.claimableAmount(this.bobo.address)).to.equal(100)
 
+    var vestingInfo = await this.vesting.vestingInfo(this.bobo.address)
+    expect(vestingInfo.schedules.length).to.equal(1)
+    expect(vestingInfo.schedules[0].endTime).to.equal(100)
+    expect(vestingInfo.schedules[0].broAmount).to.equal(100)
+
     await this.vesting.removeAccount(this.bobo.address)
     expect(await this.vesting.claimableAmount(this.bobo.address)).to.equal(0)
 

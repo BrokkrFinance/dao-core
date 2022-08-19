@@ -1,7 +1,7 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "../interfaces/IDistributionHandler.sol";
+import { IDistributionHandler } from "../interfaces/IDistributionHandler.sol";
 
 contract MockDistributionHandler is IDistributionHandler {
     bool private s;

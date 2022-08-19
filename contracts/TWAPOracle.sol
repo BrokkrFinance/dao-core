@@ -1,11 +1,11 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "./interfaces/IPriceOracle.sol";
-import "./libraries/UQ112x112.sol";
-import "./libraries/FixedPoint.sol";
+import { IPriceOracle } from "./interfaces/IPriceOracle.sol";
+import { UQ112x112 } from "./libraries/UQ112x112.sol";
+import { FixedPoint } from "./libraries/FixedPoint.sol";
 
-import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
+import { IUniswapV2Pair } from "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
 
 contract TWAPOracle is IPriceOracle {
     using UQ112x112 for uint224;

@@ -16,6 +16,7 @@
     "func-visibility": ["error", { "ignoreConstructors": true }],
     "private-vars-leading-underscore": "off",
     "reason-string": "off",
-    "no-empty-blocks": "off"
+    "no-empty-blocks": "off",
+    "max-states-count": "off"
   }
 }
