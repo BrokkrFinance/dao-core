@@ -10,7 +10,7 @@ const STAKING_CONFIG = {
   maxUnstakingPeriodsPerStaker: 5,
   maxWithdrawalsPerUnstakingPeriod: 6,
   rewardGeneratingAmountBaseIndex: 7400,
-  withdrawalAmountReducePerc: 50,
+  withdrawalAmountReducePerc: 90,
   withdrawnBBroRewardReducePerc: 50,
   bBroRewardsBaseIndex: 3000,
   bBroRewardsXtraMultiplier: 10,
@@ -283,22 +283,23 @@ describe("Staking V1", function () {
     expect(staker.withdrawals.length).to.equal(1)
     expect(staker.unstakingPeriods[0].rewardsGeneratingAmount.toString().substring(0, 4)).to.equal("7499")
     expect(staker.unstakingPeriods[0].lockedAmount.toString().substring(0, 4)).to.equal("2500")
-    expect(staker.withdrawals[0].rewardsGeneratingAmount.toString().substring(0, 4)).to.equal("5000")
+    expect(staker.withdrawals[0].rewardsGeneratingAmount.toString().substring(0, 4)).to.equal("6749")
+    expect(staker.withdrawals[0].lockedAmount.toString().substring(0, 4)).to.equal("3250")
     expect(staker.withdrawals[0].unstakingPeriod).to.equal(14)
-    expect((await this.staking.totalBroStaked()).toString().substring(0, 8)).to.equal("12499726") // 7499 + 5000
+    expect((await this.staking.totalBroStaked()).toString().substring(0, 8)).to.equal("14249479") // 7499 + 6749
 
     await expect(this.staking.connect(this.mark).cancelUnstaking(ethers.utils.parseEther("1"), 15)).to.be.revertedWith(
-      "WithdrawalNotFound(1000000000000000000)"
+      "WithdrawalNotFound(1000000000000000000, 15)"
     )
     await expect(
       this.staking.connect(this.mark).cancelUnstaking(ethers.utils.parseEther("1.1"), 14)
-    ).to.be.revertedWith("WithdrawalNotFound(1100000000000000000)")
+    ).to.be.revertedWith("WithdrawalNotFound(1100000000000000000, 14)")
 
     // cancel withdrawal
     await this.staking.connect(this.mark).cancelUnstaking(ethers.utils.parseEther("1"), 14)
 
     await expect(this.staking.connect(this.mark).cancelUnstaking(ethers.utils.parseEther("1"), 14)).to.be.revertedWith(
-      "WithdrawalNotFound(1000000000000000000)"
+      "WithdrawalNotFound(1000000000000000000, 14)"
     )
 
     var staker = await this.staking.getStakerInfo(this.mark.address)
@@ -468,9 +469,9 @@ describe("Staking V1", function () {
     const stakerBobo = await this.staking.getStakerInfo(this.bobo.address)
     const stakerPaul = await this.staking.getStakerInfo(this.paul.address)
 
-    expect(stakerMark.pendingBroReward.toString().substring(0, 10)).to.equal("1795772361")
-    expect(stakerBobo.pendingBroReward.toString().substring(0, 10)).to.equal("5336208349")
-    expect(stakerPaul.pendingBroReward.toString().substring(0, 10)).to.equal("2868019288")
+    expect(stakerMark.pendingBroReward.toString().substring(0, 10)).to.equal("1872370604")
+    expect(stakerBobo.pendingBroReward.toString().substring(0, 10)).to.equal("5370844424")
+    expect(stakerPaul.pendingBroReward.toString().substring(0, 10)).to.equal("2756784971")
 
     var totalStaked = BigNumber.from("0")
     for (const staker of [stakerMark, stakerBobo, stakerPaul]) {
@@ -535,7 +536,7 @@ describe("Staking V1", function () {
     await this.staking.connect(this.distributor).handleDistribution(ethers.utils.parseEther("1"))
 
     var staker = await this.staking.getStakerInfo(this.mark.address)
-    expect(staker.pendingBroReward.toString()).to.equal("1000000000000000000")
+    expect(staker.pendingBroReward.toString()).to.equal("999999999999999999")
   })
 
   it("should properly increase unstaking period", async function () {
