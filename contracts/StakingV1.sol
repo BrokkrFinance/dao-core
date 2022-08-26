@@ -13,6 +13,8 @@ import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/securit
 import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import { SafeERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 
+/// @title Staking V1 contract
+/// @notice The Staking Contract contains the logic for BRO Token staking and reward distribution
 contract StakingV1 is
     OwnableUpgradeable,
     PausableUpgradeable,
@@ -24,33 +26,57 @@ contract StakingV1 is
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using SafeERC20Upgradeable for IERC20Mintable;
 
+    // amount of token decimals
     uint256 public constant PRECISION = 1e18;
 
+    // epoch manager contract
     IEpochManager public epochManager;
+    // $BRO token contract
     IERC20Upgradeable public broToken;
+    // $bBRO token contract
     IERC20Mintable public bBroToken;
+    // community bonding contract
     address public communityBonding;
 
+    // min amount of BRO that can be staked per tx
     uint256 public minBroStakeAmount;
 
+    // min amount of epochs for unstaking period
     uint256 public minUnstakingPeriod;
+    // max amount of epochs for unstaking period
     uint256 public maxUnstakingPeriod;
 
+    // max amount of unstaking periods the staker can have
+    // this check is omitted when staking via community bonding
     uint8 public maxUnstakingPeriodsPerStaker;
+    // max amount of withdrawals per unstaking period the staker can have
+    // 5 unstaking periods = 25 withdrawals max
     uint8 public maxWithdrawalsPerUnstakingPeriod;
 
+    // variable for calculating rewards generating amount
+    // that will generate $BRO staking rewards
     uint256 public rewardGeneratingAmountBaseIndex; // .0000 number
+    // percentage that is used to decrease
+    // withdrawal rewards generating $BRO amount
     uint256 public withdrawalAmountReducePerc; // .00 number
+    // percentage that is used to decrease
+    // $bBRO rewards for unstaked amounts
     uint256 public withdrawnBBroRewardReducePerc; // .00 number
 
+    // variable for calculating $bBRO rewards
     uint256 public bBroRewardsBaseIndex; // .0000 number
+    // variable for calculating $bBRO rewards
     uint16 public bBroRewardsXtraMultiplier;
 
+    // global reward index
     uint256 public globalBroRewardIndex;
+    // total amount of $BRO tokens locked inside staking contract
     uint256 public totalBroStaked;
 
+    // staker info
     mapping(address => Staker) private stakers;
 
+    /// @notice allows only community bonding contract to access
     modifier onlyCommunityBonding() {
         require(
             _msgSender() == communityBonding,
@@ -110,6 +136,7 @@ contract StakingV1 is
         address /* newImplementation */
     ) internal virtual override onlyOwner {}
 
+    /// @inheritdoc IDistributionHandler
     function handleDistribution(uint256 _amount) external onlyDistributor {
         if (totalBroStaked == 0) {
             broToken.safeTransfer(distributor, _amount);
@@ -120,14 +147,12 @@ contract StakingV1 is
         emit DistributionHandled(_amount);
     }
 
+    /// @inheritdoc IStakingV1
     function stake(uint256 _amount, uint256 _unstakingPeriod)
         external
         whenNotPaused
     {
-        require(
-            _amount >= minBroStakeAmount,
-            "Staking amount must be higher than min amount"
-        );
+        _assertProperStakeAmount(_amount);
         broToken.safeTransferFrom(_msgSender(), address(this), _amount);
 
         Staker storage staker = _updateStaker(
@@ -144,15 +169,13 @@ contract StakingV1 is
         emit Staked(_msgSender(), _amount, _unstakingPeriod);
     }
 
+    /// @inheritdoc IStakingV1
     function communityBondStake(
         address _stakerAddress,
         uint256 _amount,
         uint256 _unstakingPeriod
     ) external onlyCommunityBonding whenNotPaused {
-        require(
-            _amount >= minBroStakeAmount,
-            "Staking amount must be higher than min amount"
-        );
+        _assertProperStakeAmount(_amount);
         broToken.safeTransferFrom(_msgSender(), address(this), _amount);
 
         Staker storage staker = _updateStaker(
@@ -164,6 +187,7 @@ contract StakingV1 is
         emit CommunityBondStaked(_msgSender(), _amount, _unstakingPeriod);
     }
 
+    /// @inheritdoc IStakingV1
     function compound(uint256 _unstakingPeriod) external whenNotPaused {
         Staker storage staker = _updateStaker(
             _msgSender(),
@@ -186,6 +210,7 @@ contract StakingV1 is
         emit Compounded(_msgSender(), broReward, _unstakingPeriod);
     }
 
+    /// @inheritdoc IStakingV1
     function increaseUnstakingPeriod(
         uint256 _currentUnstakingPeriod,
         uint256 _increasedUnstakingPeriod
@@ -194,11 +219,7 @@ contract StakingV1 is
             _currentUnstakingPeriod < _increasedUnstakingPeriod,
             "Unstaking period can only be increased"
         );
-        require(
-            _increasedUnstakingPeriod >= minUnstakingPeriod &&
-                _increasedUnstakingPeriod <= maxUnstakingPeriod,
-            "Invalid unstaking period"
-        );
+        _assertProperUnstakingPeriod(_increasedUnstakingPeriod);
 
         Staker storage staker = _updateStaker(
             _msgSender(),
@@ -241,7 +262,7 @@ contract StakingV1 is
             uint256 totalStakedPerUnstakingPeriod = currentUnstakingPeriod
                 .rewardsGeneratingAmount + currentUnstakingPeriod.lockedAmount;
 
-            uint256 newRewardsGeneratingAmount = _calculateRewardsGeneratingBro(
+            uint256 newRewardsGeneratingAmount = _computeRewardsGeneratingBro(
                 totalStakedPerUnstakingPeriod,
                 _increasedUnstakingPeriod
             );
@@ -256,6 +277,7 @@ contract StakingV1 is
         }
     }
 
+    /// @inheritdoc IStakingV1
     function unstake(uint256 _amount, uint256 _unstakingPeriod)
         external
         whenNotPaused
@@ -302,8 +324,12 @@ contract StakingV1 is
             revert WithdrawalsLimitWasReached();
         }
 
-        uint256 reducedRewardsGeneratingWithdrawalAmount = (_amount *
-            withdrawalAmountReducePerc) / 100;
+        // 1. Take withdrawalAmountReducePerc cut from unstake amount
+        // 2. Calculate rewards generating amount based on unstaking period
+        uint256 reducedRewardsGeneratingWithdrawalAmount = _computeRewardsGeneratingBro(
+                (_amount * withdrawalAmountReducePerc) / 100,
+                unstakingPeriod.unstakingPeriod
+            );
         Withdrawal memory withdrawal = Withdrawal(
             reducedRewardsGeneratingWithdrawalAmount,
             _amount - reducedRewardsGeneratingWithdrawalAmount,
@@ -315,10 +341,9 @@ contract StakingV1 is
 
         uint256 reducedTotalStakedPerUnstakingPeriod = totalStakedPerUnstakingPeriod -
                 _amount;
-        unstakingPeriod
-            .rewardsGeneratingAmount = _calculateRewardsGeneratingBro(
+        unstakingPeriod.rewardsGeneratingAmount = _computeRewardsGeneratingBro(
             reducedTotalStakedPerUnstakingPeriod,
-            _unstakingPeriod
+            unstakingPeriod.unstakingPeriod
         );
         unstakingPeriod.lockedAmount =
             reducedTotalStakedPerUnstakingPeriod -
@@ -329,9 +354,10 @@ contract StakingV1 is
             unstakingPeriod.rewardsGeneratingAmount +
             withdrawal.rewardsGeneratingAmount;
 
-        emit Unstaked(_msgSender(), _amount, _unstakingPeriod);
+        emit Unstaked(_msgSender(), _amount, unstakingPeriod.unstakingPeriod);
     }
 
+    /// @inheritdoc IStakingV1
     function withdraw() external whenNotPaused {
         Staker storage staker = _updateStaker(
             _msgSender(),
@@ -396,6 +422,7 @@ contract StakingV1 is
         emit Withdrawn(_msgSender(), withdrawAmount);
     }
 
+    /// @inheritdoc IStakingV1
     function cancelUnstaking(uint256 _amount, uint256 _unstakingPeriod)
         external
         whenNotPaused
@@ -434,9 +461,10 @@ contract StakingV1 is
             return;
         }
 
-        revert WithdrawalNotFound(_amount);
+        revert WithdrawalNotFound(_amount, _unstakingPeriod);
     }
 
+    /// @inheritdoc IStakingV1
     function claimRewards(bool _claimBro, bool _claimBBro)
         external
         whenNotPaused
@@ -482,6 +510,10 @@ contract StakingV1 is
         return (claimedBro, claimedBBro);
     }
 
+    /// @notice Updates storage staker info
+    /// @param _staker staker's address
+    /// @param _updated updated memory staker info struct
+    /// @return storage staker struct
     function _updateStaker(address _staker, Staker memory _updated)
         private
         returns (Staker storage)
@@ -495,6 +527,11 @@ contract StakingV1 is
         return staker;
     }
 
+    /// @notice Returns staker info by specified address
+    /// @dev If staker info is empty sets last rewards claim timestamp to the current date
+    /// for proper rewards calculation
+    /// @param _stakerAddress staker's address
+    /// @return memory staker struct
     function _getStakerWithRecalculatedRewards(address _stakerAddress)
         private
         view
@@ -506,13 +543,16 @@ contract StakingV1 is
             staker.lastRewardsClaimTimestamp = block.timestamp;
         }
 
-        return _calculateStakerRewards(staker);
+        return _computeStakerRewards(staker);
     }
 
-    // bro rewards generating amount calculation
-    // formula:
-    // base + (1 - base) * unstaking_period / max_unstaking_period
-    function _calculateRewardsGeneratingBro(
+    /// @notice Computes rewards generating amount of $BRO
+    /// that will be used to receive staking rewards
+    /// @dev Formula: base + (1 - base) * unstaking_period / max_unstaking_period
+    /// @param _amount $BRO amount
+    /// @param _unstakingPeriod that is used for calculation
+    /// @return computed rewards generating amount
+    function _computeRewardsGeneratingBro(
         uint256 _amount,
         uint256 _unstakingPeriod
     ) private view returns (uint256) {
@@ -528,8 +568,13 @@ contract StakingV1 is
         return (_amount * rewardsGeneratingPerBro) / PRECISION;
     }
 
-    // bro and bbro rewards calculations
-    function _calculateStakerRewards(Staker memory _staker)
+    /// @notice Computes $BRO and $bBRO staker rewards for each unstaking period
+    /// and withdrawals
+    /// @dev If withdrawal already expired the staker will still receive his $BRO staking rewards
+    /// but $bBRO rewards won't be generated anymore
+    /// @param _staker staker info
+    /// @return memory staker with recalculated rewards
+    function _computeStakerRewards(Staker memory _staker)
         private
         view
         returns (Staker memory)
@@ -557,7 +602,7 @@ contract StakingV1 is
             }
         }
 
-        // compute rewards for the tokens held inside withdrawals
+        // compute rewards for the tokens that are stored inside withdrawals
         for (uint256 j = 0; j < _staker.withdrawals.length; j++) {
             Withdrawal memory withdrawal = _staker.withdrawals[j];
 
@@ -605,7 +650,11 @@ contract StakingV1 is
         return _staker;
     }
 
-    // bro rewards formula: staked_bro * (global_index - staker_reward_index)
+    /// @notice Computes stakers $BRO rewards
+    /// @dev Formula: staked_bro * (global_index - staker_reward_index)
+    /// @param _rewardsGeneratingBroAmount amount of $BRO for reward calculation
+    /// @param _stakerRewardIndex stakers share index
+    /// @return computed $BRO reward
     function _computeBroReward(
         uint256 _rewardsGeneratingBroAmount,
         uint256 _stakerRewardIndex
@@ -615,8 +664,12 @@ contract StakingV1 is
                 (globalBroRewardIndex - _stakerRewardIndex)) / PRECISION;
     }
 
-    // bbro  rewards formula:
-    // (((base + xtra_mult * unstaking_period^2 * 10^(-6)) * staked_bro) / 365) * unclaimed_epochs
+    /// @notice Computes stakers $bBRO rewards
+    /// @dev Formula: (((base + xtra_mult * unstaking_period^2 * 10^(-6)) * staked_bro) / 365) * unclaimed_epochs
+    /// @param _totalBroStakedAmount total $BRO staked inside unstaking period or withdrawal for $bBRO rewards
+    /// @param _unstakingPeriod unstaking period for the rewards calculation
+    /// @param _unclaimedEpochs amount of epochs when rewards wasn't claimed
+    /// @return computed $bBRO reward
     function _computeBBroReward(
         uint256 _totalBroStakedAmount,
         uint256 _unstakingPeriod,
@@ -631,6 +684,13 @@ contract StakingV1 is
         return bBroPerEpochReward * _unclaimedEpochs;
     }
 
+    /// @notice Creates or adjusts existing unstaking period
+    /// @dev If unstaking period exists then rewards generating amount will be recalculated
+    /// but if not then new unstaking period will be created
+    /// @param _staker staker info
+    /// @param _amount staked amount
+    /// @param _unstakingPeriod specified unstaking period
+    /// @param _fromCommunityBonding if stake was performed from community bonding contract we omit checks
     function _adjustOrCreateUnstakingPeriod(
         Staker storage _staker,
         uint256 _amount,
@@ -649,7 +709,7 @@ contract StakingV1 is
                 _staker.unstakingPeriods[i].rewardsGeneratingAmount +
                 _staker.unstakingPeriods[i].lockedAmount;
 
-            uint256 newRewardsGeneratingAmount = _calculateRewardsGeneratingBro(
+            uint256 newRewardsGeneratingAmount = _computeRewardsGeneratingBro(
                 totalStakedPerUnstakingPeriod,
                 _unstakingPeriod
             );
@@ -666,20 +726,17 @@ contract StakingV1 is
         }
 
         // unstake with specified period doesn't exists
-        require(
-            _unstakingPeriod >= minUnstakingPeriod &&
-                _unstakingPeriod <= maxUnstakingPeriod,
-            "Invalid unstaking period"
-        );
+        _assertProperUnstakingPeriod(_unstakingPeriod);
 
         if (
             !_fromCommunityBonding &&
             _staker.unstakingPeriods.length >= maxUnstakingPeriodsPerStaker
         ) {
+            // we are allowed to exceed unstaking periods limit only when we stake via community bonding
             revert UnstakingPeriodsLimitWasReached();
         }
 
-        uint256 rewardsGeneratingBro = _calculateRewardsGeneratingBro(
+        uint256 rewardsGeneratingBro = _computeRewardsGeneratingBro(
             _amount,
             _unstakingPeriod
         );
@@ -691,9 +748,15 @@ contract StakingV1 is
                 _unstakingPeriod
             )
         );
+
         totalBroStaked += rewardsGeneratingBro;
     }
 
+    /// @notice Returns unstaking period index if found otherwise returns false
+    /// @param _staker staker info
+    /// @param _unstakingPeriod unstaking period to search for
+    /// @return index unstaking period index
+    /// @return exists boolen that states either if was found or not
     function _findUnstakingPeriod(
         Staker storage _staker,
         uint256 _unstakingPeriod
@@ -711,6 +774,10 @@ contract StakingV1 is
         return (0, false);
     }
 
+    /// @notice Counts withdrawals with the same unstaking period
+    /// @param _staker staker info
+    /// @param _unstakingPeriod unstaking period to search for
+    /// @return amount of the same unstaking periods
     function _countWithdrawalsByUnstakingPeriod(
         Staker storage _staker,
         uint256 _unstakingPeriod
@@ -725,18 +792,46 @@ contract StakingV1 is
         return count;
     }
 
+    /// @notice Validates staked amount
+    /// @param _amount staked amount
+    function _assertProperStakeAmount(uint256 _amount) private view {
+        require(
+            _amount >= minBroStakeAmount,
+            "Staking amount must be higher than min amount"
+        );
+    }
+
+    /// @notice Validates unstaking period
+    /// @param _unstakingPeriod specified unstaking period
+    function _assertProperUnstakingPeriod(uint256 _unstakingPeriod)
+        private
+        view
+    {
+        require(
+            _unstakingPeriod >= minUnstakingPeriod &&
+                _unstakingPeriod <= maxUnstakingPeriod,
+            "Invalid unstaking period"
+        );
+    }
+
+    /// @notice Pauses the contract
     function pause() external onlyOwner {
         _pause();
     }
 
+    /// @notice Unpauses the contract
     function unpause() external onlyOwner {
         _unpause();
     }
 
+    /// @notice Sets new distributor address
+    /// @param _newDistributor new distributor
     function setDistributor(address _newDistributor) external onlyOwner {
         _setDistributor(_newDistributor);
     }
 
+    /// @notice Sets new community bonding address
+    /// @param _newCommunityBonding new community bonding address
     function setCommunityBonding(address _newCommunityBonding)
         external
         onlyOwner
@@ -744,6 +839,8 @@ contract StakingV1 is
         communityBonding = _newCommunityBonding;
     }
 
+    /// @notice Sets new min $BRO stake amount
+    /// @param _newMinBroStakeAmount new min stake amount
     function setMinBroStakeAmount(uint256 _newMinBroStakeAmount)
         external
         onlyOwner
@@ -751,6 +848,8 @@ contract StakingV1 is
         minBroStakeAmount = _newMinBroStakeAmount;
     }
 
+    /// @notice Sets min unstaking period
+    /// @param _newMinUnstakingPeriod new min unstaking period
     function setMinUnstakingPeriod(uint256 _newMinUnstakingPeriod)
         external
         onlyOwner
@@ -758,6 +857,8 @@ contract StakingV1 is
         minUnstakingPeriod = _newMinUnstakingPeriod;
     }
 
+    /// @notice Sets max unstaking period
+    /// @param _newMaxUnstakingPeriod new max unstaking period
     function setMaxUnstakingPeriod(uint256 _newMaxUnstakingPeriod)
         external
         onlyOwner
@@ -765,18 +866,24 @@ contract StakingV1 is
         maxUnstakingPeriod = _newMaxUnstakingPeriod;
     }
 
+    /// @notice Sets max amount of unstaking periods per staker
+    /// @param _newMaxUnstakingPeriodsPerStaker new max amount of unstaking periods per staker
     function setMaxUnstakingPeriodsPerStaker(
         uint8 _newMaxUnstakingPeriodsPerStaker
     ) external onlyOwner {
         maxUnstakingPeriodsPerStaker = _newMaxUnstakingPeriodsPerStaker;
     }
 
+    /// @notice Sets new max withdrawals per unstaking period per staker
+    /// @param _newMaxWithdrawalsPerUnstakingPeriod new max withdrawals per unstaking period per staker
     function setMaxWithdrawalsPerUnstakingPeriod(
         uint8 _newMaxWithdrawalsPerUnstakingPeriod
     ) external onlyOwner {
         maxWithdrawalsPerUnstakingPeriod = _newMaxWithdrawalsPerUnstakingPeriod;
     }
 
+    /// @notice Sets new rewards generating amount base index
+    /// @param _newRewardGeneratingAmountBaseIndex new rewards generating amount base index
     function setRewardGeneratingAmountBaseIndex(
         uint256 _newRewardGeneratingAmountBaseIndex
     ) external onlyOwner {
@@ -790,6 +897,8 @@ contract StakingV1 is
             10_000;
     }
 
+    /// @notice Sets new withdrawal amount redice perc
+    /// @param _newWithdrawalAmountReducePerc new withdrawal amount redice perc
     function setWithdrawalAmountReducePerc(
         uint256 _newWithdrawalAmountReducePerc
     ) external onlyOwner {
@@ -801,6 +910,8 @@ contract StakingV1 is
         withdrawalAmountReducePerc = _newWithdrawalAmountReducePerc;
     }
 
+    /// @notice Sets new withdrawan $bBRO reward rediced percent
+    /// @param _newWithdrawnBBroRewardReducePerc new withdrawan $bBRO reward rediced percent
     function setWithdrawnBBroRewardReducePerc(
         uint256 _newWithdrawnBBroRewardReducePerc
     ) external onlyOwner {
@@ -812,6 +923,8 @@ contract StakingV1 is
         withdrawnBBroRewardReducePerc = _newWithdrawnBBroRewardReducePerc;
     }
 
+    /// @notice Sets new $bBRO rewards base index
+    /// @param _newBBroRewardsBaseIndex new $bBRO rewards base index
     function setBBroRewardsBaseIndex(uint256 _newBBroRewardsBaseIndex)
         external
         onlyOwner
@@ -823,6 +936,8 @@ contract StakingV1 is
         bBroRewardsBaseIndex = (_newBBroRewardsBaseIndex * PRECISION) / 10_000;
     }
 
+    /// @notice Sets new $bBRO rewards extra multiplier
+    /// @param _newBBroRewardsXtraMultiplier new $bBRO rewards extra multiplier
     function setBBroRewardsXtraMultiplier(uint16 _newBBroRewardsXtraMultiplier)
         external
         onlyOwner
@@ -830,6 +945,7 @@ contract StakingV1 is
         bBroRewardsXtraMultiplier = _newBBroRewardsXtraMultiplier;
     }
 
+    /// @inheritdoc IStakingV1
     function getStakerInfo(address _stakerAddress)
         public
         view
@@ -838,6 +954,7 @@ contract StakingV1 is
         return _getStakerWithRecalculatedRewards(_stakerAddress);
     }
 
+    /// @inheritdoc IDistributionHandler
     function supportsDistributions() public pure returns (bool) {
         return true;
     }

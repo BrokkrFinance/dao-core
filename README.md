@@ -1,6 +1,7 @@
 [![Unit Tests](https://github.com/block42-blockchain-company/dao-core/actions/workflows/test.yml/badge.svg)](https://github.com/block42-blockchain-company/dao-core/actions/workflows/test.yml)
 [![Linter Check](https://github.com/block42-blockchain-company/dao-core/actions/workflows/lint.yml/badge.svg)](https://github.com/block42-blockchain-company/dao-core/actions/workflows/lint.yml)
 [![Coverage Check](https://github.com/block42-blockchain-company/dao-core/actions/workflows/coverage.yml/badge.svg)](https://github.com/block42-blockchain-company/dao-core/actions/workflows/coverage.yml)
+[![MythXBadge](https://badgen.net/https/api.mythx.io/v1/projects/12ffa770-e566-4204-9917-0b90401125d6/badge/data?cache=300&icon=https://raw.githubusercontent.com/ConsenSys/mythx-github-badge/main/logo_white.svg)](https://docs.mythx.io/dashboard/github-badges)
 
 # Brokkr Protocol ("Brotocol") Core Contracts
 
