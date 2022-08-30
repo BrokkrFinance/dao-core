@@ -35,7 +35,7 @@ describe("Staking V1", function () {
     this.epochManager = await this.EpochManager.deploy()
     await this.epochManager.deployed()
 
-    this.broToken = await this.BroToken.deploy(this.owner.address)
+    this.broToken = await this.BroToken.deploy("Bro Token", "$BRO", this.owner.address)
     await this.broToken.deployed()
 
     this.bbroToken = await upgrades.deployProxy(this.BBroToken, ["bBRO Token", "bBRO"])
@@ -47,7 +47,7 @@ describe("Staking V1", function () {
         this.epochManager.address,
         this.broToken.address,
         this.bbroToken.address,
-        this.communityBonding.address,
+        [this.communityBonding.address],
         STAKING_CONFIG.minBroStakeAmount,
         STAKING_CONFIG.minUnstakingPeriod,
         STAKING_CONFIG.maxUnstakingPeriod,
@@ -76,7 +76,8 @@ describe("Staking V1", function () {
     expect(await this.staking.epochManager()).to.equal(this.epochManager.address)
     expect(await this.staking.broToken()).to.equal(this.broToken.address)
     expect(await this.staking.bBroToken()).to.equal(this.bbroToken.address)
-    expect(await this.staking.communityBonding()).to.equal(this.communityBonding.address)
+    expect(await this.staking.protocolMembers(0)).to.equal(this.communityBonding.address)
+    await expect(this.staking.protocolMembers(1)).to.be.reverted
     expect(await this.staking.minBroStakeAmount()).to.equal(STAKING_CONFIG.minBroStakeAmount)
     expect(await this.staking.minUnstakingPeriod()).to.equal(STAKING_CONFIG.minUnstakingPeriod)
     expect(await this.staking.maxUnstakingPeriod()).to.equal(STAKING_CONFIG.maxUnstakingPeriod)
@@ -92,7 +93,6 @@ describe("Staking V1", function () {
     expect(await this.staking.supportsDistributions()).to.equal(true)
 
     await this.staking.setDistributor(this.mark.address)
-    await this.staking.setCommunityBonding(this.paul.address)
     await this.staking.setMinBroStakeAmount(ethers.utils.parseEther("2"))
     await this.staking.setMinUnstakingPeriod(15)
     await this.staking.setMaxUnstakingPeriod(364)
@@ -105,7 +105,6 @@ describe("Staking V1", function () {
     await this.staking.setBBroRewardsXtraMultiplier(11)
 
     expect(await this.staking.distributor()).to.equal(this.mark.address)
-    expect(await this.staking.communityBonding()).to.equal(this.paul.address)
     expect(await this.staking.minBroStakeAmount()).to.equal(ethers.utils.parseEther("2"))
     expect(await this.staking.minUnstakingPeriod()).to.equal(15)
     expect(await this.staking.maxUnstakingPeriod()).to.equal(364)
@@ -122,10 +121,24 @@ describe("Staking V1", function () {
     await expect(this.staking.setWithdrawnBBroRewardReducePerc(101)).to.be.revertedWith("Invalid decimals")
     await expect(this.staking.setBBroRewardsBaseIndex(10_001)).to.be.revertedWith("Invalid decimals")
 
+    await this.staking.removeProtocolMember(this.communityBonding.address)
+    await expect(this.staking.protocolMembers(0)).to.be.reverted
+    await expect(this.staking.removeProtocolMember(this.communityBonding.address)).to.be.revertedWith(
+      "Protocol member not found"
+    )
+    await this.staking.addProtocolMember(this.communityBonding.address)
+    await expect(this.staking.addProtocolMember(this.communityBonding.address)).to.be.revertedWith(
+      "Address already added to the protocol members list"
+    )
+    expect(await this.staking.protocolMembers(0)).to.equal(this.communityBonding.address)
+
     await expect(this.staking.connect(this.paul).setDistributor(this.mark.address)).to.be.revertedWith(
       "Ownable: caller is not the owner"
     )
-    await expect(this.staking.connect(this.paul).setCommunityBonding(this.paul.address)).to.be.revertedWith(
+    await expect(this.staking.connect(this.paul).addProtocolMember(this.paul.address)).to.be.revertedWith(
+      "Ownable: caller is not the owner"
+    )
+    await expect(this.staking.connect(this.paul).removeProtocolMember(this.paul.address)).to.be.revertedWith(
       "Ownable: caller is not the owner"
     )
     await expect(this.staking.connect(this.paul).setMinBroStakeAmount(ethers.utils.parseEther("2"))).to.be.revertedWith(
@@ -168,7 +181,7 @@ describe("Staking V1", function () {
     await expect(
       this.staking
         .connect(this.communityBonding)
-        .communityBondStake(this.mark.address, ethers.utils.parseEther("1"), 14)
+        .protocolMemberStake(this.mark.address, ethers.utils.parseEther("1"), 14)
     ).to.be.revertedWith("Pausable: paused")
     await expect(this.staking.compound(14)).to.be.revertedWith("Pausable: paused")
     await expect(this.staking.unstake(ethers.utils.parseEther("1"), 14)).to.be.revertedWith("Pausable: paused")
@@ -259,7 +272,7 @@ describe("Staking V1", function () {
     await this.broToken.connect(this.communityBonding).approve(this.staking.address, ethers.utils.parseEther("1"))
     await this.staking
       .connect(this.communityBonding)
-      .communityBondStake(this.mark.address, ethers.utils.parseEther("1"), 15)
+      .protocolMemberStake(this.mark.address, ethers.utils.parseEther("1"), 15)
 
     staker = await this.staking.getStakerInfo(this.mark.address)
     expect(staker.unstakingPeriods.length).to.equal(15)

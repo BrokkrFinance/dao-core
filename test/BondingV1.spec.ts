@@ -21,16 +21,16 @@ describe("Bonding V1", function () {
     this.epochManager = await this.EpochManager.deploy()
     await this.epochManager.deployed()
 
-    this.broToken = await this.BroToken.deploy(this.distributor.address)
+    this.broToken = await this.BroToken.deploy("Bro Token", "$BRO", this.distributor.address)
     await this.broToken.deployed()
 
-    this.wAvax = await this.BroToken.deploy(this.mark.address)
+    this.wAvax = await this.BroToken.deploy("WAVAX", "$WAVAX", this.mark.address)
     await this.wAvax.deployed()
 
-    this.teslaToken = await this.BroToken.deploy(this.mark.address)
+    this.teslaToken = await this.BroToken.deploy("Tesla Token", "$TESLA", this.mark.address)
     await this.teslaToken.deployed()
 
-    this.wEth = await this.BroToken.deploy(this.mark.address)
+    this.wEth = await this.BroToken.deploy("WETH", "$WETH", this.mark.address)
     await this.wEth.deployed()
 
     this.mockPriceOracle = await this.MockPriceOracle.deploy()

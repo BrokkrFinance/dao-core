@@ -21,7 +21,7 @@ describe("Token Distributor", function () {
     this.mockDistributionHandler2 = await this.MockDistributionHandler.deploy(false)
     await this.mockDistributionHandler2.deployed()
 
-    this.broToken = await this.BroToken.deploy(this.owner.address)
+    this.broToken = await this.BroToken.deploy("Bro Token", "$BRO", this.owner.address)
     await this.broToken.deployed()
 
     this.epochManager = await this.EpochManager.deploy()
