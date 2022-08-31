@@ -14,10 +14,10 @@ describe("Treasury", function () {
   })
 
   beforeEach(async function () {
-    this.broToken = await this.BroToken.deploy(this.owner.address)
+    this.broToken = await this.BroToken.deploy("Bro Token", "$BRO", this.owner.address)
     await this.broToken.deployed()
 
-    this.anotherToken = await this.BroToken.deploy(this.owner.address)
+    this.anotherToken = await this.BroToken.deploy("Another Token", "$ANT", this.owner.address)
     await this.anotherToken.deployed()
 
     this.treasury = await this.Treasury.deploy([this.broToken.address])

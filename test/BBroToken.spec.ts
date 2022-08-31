@@ -15,6 +15,24 @@ describe("bBRO Token", function () {
     await this.bbroToken.deployed()
   })
 
+  it("should allow only owner to set name/symbol", async function () {
+    expect(await this.bbroToken.name()).to.equal("bBRO Token")
+    expect(await this.bbroToken.symbol()).to.equal("bBRO")
+
+    await this.bbroToken.setName("bBro Token Reborn")
+    await this.bbroToken.setSymbol("$bBROR")
+
+    expect(await this.bbroToken.name()).to.equal("bBro Token Reborn")
+    expect(await this.bbroToken.symbol()).to.equal("$bBROR")
+
+    await expect(this.bbroToken.connect(this.mark).setName("Some")).to.be.revertedWith(
+      "Ownable: caller is not the owner"
+    )
+    await expect(this.bbroToken.connect(this.mark).setSymbol("Some")).to.be.revertedWith(
+      "Ownable: caller is not the owner"
+    )
+  })
+
   it("should only allow owner to whitelist/remove address", async function () {
     expect(await this.bbroToken.isWhitelisted(this.mark.address)).to.equal(false)
     await this.bbroToken.whitelistAddress(this.mark.address)

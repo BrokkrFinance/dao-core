@@ -227,7 +227,7 @@ contract BondingV1 is
             claims[_msgSender()] = userClaims;
         } else {
             broToken.safeApprove(address(broStaking), broPayout);
-            broStaking.communityBondStake(
+            broStaking.protocolMemberStake(
                 _msgSender(),
                 broPayout,
                 unstakingPeriod

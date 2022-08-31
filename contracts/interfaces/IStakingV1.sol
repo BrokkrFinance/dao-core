@@ -38,11 +38,11 @@ interface IStakingV1 {
         uint256 unstakingPeriod
     );
 
-    /// @notice Emitted when stake was performed via community bonding contract
+    /// @notice Emitted when stake was performed via one of the protocol members
     /// @param staker staker's address
     /// @param amount staked amount
     /// @param unstakingPeriod selected unstaking period
-    event CommunityBondStaked(
+    event ProtocolMemberStaked(
         address indexed staker,
         uint256 amount,
         uint256 unstakingPeriod
@@ -101,8 +101,8 @@ interface IStakingV1 {
         address broToken_;
         // $bBRO token address
         address bBroToken_;
-        // community bonding address
-        address communityBonding_;
+        // list of protocol members
+        address[] protocolMembers_;
         // min amount of BRO that can be staked per tx
         uint256 minBroStakeAmount_;
         // min amount of epochs for unstaking period
@@ -170,11 +170,11 @@ interface IStakingV1 {
     /// @param _unstakingPeriod specified unstaking period
     function stake(uint256 _amount, uint256 _unstakingPeriod) external;
 
-    /// @notice Staker specified amount of $BRO token that was bonded via community bonding contract
+    /// @notice Stake specified amount of $BRO tokens via one of the protocol members
     /// @param _stakerAddress staker's address
     /// @param _amount bonded amount that will be staked
     /// @param _unstakingPeriod specified unstaking period
-    function communityBondStake(
+    function protocolMemberStake(
         address _stakerAddress,
         uint256 _amount,
         uint256 _unstakingPeriod

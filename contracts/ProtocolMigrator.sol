@@ -51,7 +51,7 @@ contract ProtocolMigrator is Ownable {
                 _userMigrations[i].bBroInWalletBalance
             );
 
-            staking.communityBondStake(
+            staking.protocolMemberStake(
                 _userMigrations[i].account,
                 _userMigrations[i].stakedBro,
                 unstakingPeriod

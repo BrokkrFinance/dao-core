@@ -14,6 +14,9 @@ contract BBroToken is
     UUPSUpgradeable,
     IERC20Mintable
 {
+    string private _name; // re-declare name prop to be able to change it
+    string private _symbol; // re-declare symbol prop to be able to change it
+
     mapping(address => bool) private whitelist;
 
     event WhitelistAddition(address indexed account);
@@ -29,13 +32,16 @@ contract BBroToken is
         _;
     }
 
-    function initialize(string memory _name, string memory _symbol)
+    function initialize(string memory name_, string memory symbol_)
         public
         initializer
     {
         __Ownable_init();
         __UUPSUpgradeable_init();
-        __ERC20_init(_name, _symbol);
+        __ERC20_init("", "");
+
+        _name = name_;
+        _symbol = symbol_;
     }
 
     function _authorizeUpgrade(
@@ -70,5 +76,21 @@ contract BBroToken is
 
     function isWhitelisted(address _account) public view returns (bool) {
         return whitelist[_account];
+    }
+
+    function setName(string memory newName_) external onlyOwner {
+        _name = newName_;
+    }
+
+    function setSymbol(string memory newSymbol_) external onlyOwner {
+        _symbol = newSymbol_;
+    }
+
+    function name() public view override returns (string memory) {
+        return _name;
+    }
+
+    function symbol() public view override returns (string memory) {
+        return _symbol;
     }
 }

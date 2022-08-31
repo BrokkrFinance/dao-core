@@ -10,7 +10,7 @@ contract MockStakingV1 is IStakingV1 {
 
     function stake(uint256, uint256) external pure {}
 
-    function communityBondStake(
+    function protocolMemberStake(
         address,
         uint256,
         uint256

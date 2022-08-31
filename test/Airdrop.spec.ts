@@ -18,7 +18,7 @@ describe("Airdrop", function () {
   })
 
   beforeEach(async function () {
-    this.broToken = await this.BroToken.deploy(this.owner.address)
+    this.broToken = await this.BroToken.deploy("Bro Token", "$BRO", this.owner.address)
     await this.broToken.deployed()
 
     this.airdrop = await this.Airdrop.deploy(this.broToken.address)

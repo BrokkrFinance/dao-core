@@ -35,8 +35,8 @@ contract StakingV1 is
     IERC20Upgradeable public broToken;
     // $bBRO token contract
     IERC20Mintable public bBroToken;
-    // community bonding contract
-    address public communityBonding;
+    // list of protocol members
+    address[] public protocolMembers;
 
     // min amount of BRO that can be staked per tx
     uint256 public minBroStakeAmount;
@@ -76,12 +76,17 @@ contract StakingV1 is
     // staker info
     mapping(address => Staker) private stakers;
 
-    /// @notice allows only community bonding contract to access
-    modifier onlyCommunityBonding() {
-        require(
-            _msgSender() == communityBonding,
-            "Caller is not the community bonding contract"
-        );
+    /// @notice allows only protocol member address to access
+    modifier onlyProtocolMember() {
+        bool exists = false;
+        for (uint256 i = 0; i < protocolMembers.length; i++) {
+            if (_msgSender() == protocolMembers[i]) {
+                exists = true;
+                break;
+            }
+        }
+
+        require(exists, "Caller is not the protocol member");
         _;
     }
 
@@ -97,7 +102,7 @@ contract StakingV1 is
         epochManager = IEpochManager(initParams_.epochManager_);
         broToken = IERC20Upgradeable(initParams_.broToken_);
         bBroToken = IERC20Mintable(initParams_.bBroToken_);
-        communityBonding = initParams_.communityBonding_;
+        protocolMembers = initParams_.protocolMembers_;
 
         minBroStakeAmount = initParams_.minBroStakeAmount_;
 
@@ -170,11 +175,11 @@ contract StakingV1 is
     }
 
     /// @inheritdoc IStakingV1
-    function communityBondStake(
+    function protocolMemberStake(
         address _stakerAddress,
         uint256 _amount,
         uint256 _unstakingPeriod
-    ) external onlyCommunityBonding whenNotPaused {
+    ) external onlyProtocolMember whenNotPaused {
         _assertProperStakeAmount(_amount);
         broToken.safeTransferFrom(_msgSender(), address(this), _amount);
 
@@ -184,7 +189,7 @@ contract StakingV1 is
         );
 
         _adjustOrCreateUnstakingPeriod(staker, _amount, _unstakingPeriod, true);
-        emit CommunityBondStaked(_msgSender(), _amount, _unstakingPeriod);
+        emit ProtocolMemberStaked(_msgSender(), _amount, _unstakingPeriod);
     }
 
     /// @inheritdoc IStakingV1
@@ -690,12 +695,12 @@ contract StakingV1 is
     /// @param _staker staker info
     /// @param _amount staked amount
     /// @param _unstakingPeriod specified unstaking period
-    /// @param _fromCommunityBonding if stake was performed from community bonding contract we omit checks
+    /// @param _fromProtocolMember if stake was performed from on of the protocol member we omit checks
     function _adjustOrCreateUnstakingPeriod(
         Staker storage _staker,
         uint256 _amount,
         uint256 _unstakingPeriod,
-        bool _fromCommunityBonding
+        bool _fromProtocolMember
     ) private {
         for (uint256 i = 0; i < _staker.unstakingPeriods.length; i++) {
             if (_staker.unstakingPeriods[i].unstakingPeriod != _unstakingPeriod)
@@ -729,7 +734,7 @@ contract StakingV1 is
         _assertProperUnstakingPeriod(_unstakingPeriod);
 
         if (
-            !_fromCommunityBonding &&
+            !_fromProtocolMember &&
             _staker.unstakingPeriods.length >= maxUnstakingPeriodsPerStaker
         ) {
             // we are allowed to exceed unstaking periods limit only when we stake via community bonding
@@ -830,13 +835,36 @@ contract StakingV1 is
         _setDistributor(_newDistributor);
     }
 
-    /// @notice Sets new community bonding address
-    /// @param _newCommunityBonding new community bonding address
-    function setCommunityBonding(address _newCommunityBonding)
-        external
-        onlyOwner
-    {
-        communityBonding = _newCommunityBonding;
+    /// @notice Adds new protocol member
+    /// @param _newMember new protocol member address
+    function addProtocolMember(address _newMember) external onlyOwner {
+        bool exists = false;
+        for (uint256 i = 0; i < protocolMembers.length; i++) {
+            if (_newMember == protocolMembers[i]) {
+                exists = true;
+                break;
+            }
+        }
+
+        require(!exists, "Address already added to the protocol members list");
+        protocolMembers.push(_newMember);
+    }
+
+    /// @notice Removes address from protocol members list
+    /// @param _member member address for removal
+    function removeProtocolMember(address _member) external onlyOwner {
+        for (uint256 i = 0; i < protocolMembers.length; i++) {
+            if (_member == protocolMembers[i]) {
+                protocolMembers[i] = protocolMembers[
+                    protocolMembers.length - 1
+                ];
+                protocolMembers.pop();
+
+                return;
+            }
+        }
+
+        revert("Protocol member not found");
     }
 
     /// @notice Sets new min $BRO stake amount
