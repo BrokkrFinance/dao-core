@@ -223,4 +223,11 @@ interface IStakingV1 {
         external
         view
         returns (Staker memory);
+
+    /// @notice Returns total amount of rewards generating $BRO by staker address
+    /// @param _stakerAddress staker's address to look for
+    function totalStakerRewardsGeneratingBro(address _stakerAddress)
+        external
+        view
+        returns (uint256);
 }

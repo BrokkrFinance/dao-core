@@ -40,4 +40,22 @@ interface IBondingV1 {
     function bond(address _token, uint256 _amount) external;
 
     function claim() external;
+
+    function approveTo() external view returns (address);
+
+    function simulateBond(address _token, uint256 _amount)
+        external
+        view
+        returns (uint256);
+
+    function getClaims(address _account) external view returns (Claim[] memory);
+
+    function getBondOptions() external view returns (BondOption[] memory);
+
+    function getBondOptionByIndex(uint256 _index)
+        external
+        view
+        returns (BondOption memory);
+
+    function getBondingMode() external view returns (BondingMode);
 }

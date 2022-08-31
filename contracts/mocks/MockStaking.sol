@@ -41,6 +41,14 @@ contract MockStakingV1 is IStakingV1 {
         return stakers[_account];
     }
 
+    function totalStakerRewardsGeneratingBro(address)
+        external
+        pure
+        returns (uint256)
+    {
+        return 1;
+    }
+
     function feedMockStakers(address a, address b) external {
         Staker storage sa = stakers[a];
         sa.unstakingPeriods.push(UnstakingPeriod(100, 100, 365));

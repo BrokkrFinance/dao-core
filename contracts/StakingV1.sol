@@ -982,6 +982,32 @@ contract StakingV1 is
         return _getStakerWithRecalculatedRewards(_stakerAddress);
     }
 
+    /// @inheritdoc IStakingV1
+    function totalStakerRewardsGeneratingBro(address _stakerAddress)
+        public
+        view
+        returns (uint256)
+    {
+        uint256 totalRewardsGeneratingAmount = 0;
+        Staker memory staker = _getStakerWithRecalculatedRewards(
+            _stakerAddress
+        );
+
+        for (uint256 i = 0; i < staker.unstakingPeriods.length; i++) {
+            totalRewardsGeneratingAmount += staker
+                .unstakingPeriods[i]
+                .rewardsGeneratingAmount;
+        }
+
+        for (uint256 i = 0; i < staker.withdrawals.length; i++) {
+            totalRewardsGeneratingAmount += staker
+                .withdrawals[i]
+                .rewardsGeneratingAmount;
+        }
+
+        return totalRewardsGeneratingAmount;
+    }
+
     /// @inheritdoc IDistributionHandler
     function supportsDistributions() public pure returns (bool) {
         return true;
