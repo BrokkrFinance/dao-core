@@ -695,7 +695,7 @@ contract StakingV1 is
     /// @param _staker staker info
     /// @param _amount staked amount
     /// @param _unstakingPeriod specified unstaking period
-    /// @param _fromProtocolMember if stake was performed from community bonding contract we omit checks
+    /// @param _fromProtocolMember if stake was performed from on of the protocol member we omit checks
     function _adjustOrCreateUnstakingPeriod(
         Staker storage _staker,
         uint256 _amount,

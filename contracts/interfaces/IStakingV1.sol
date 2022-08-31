@@ -170,7 +170,7 @@ interface IStakingV1 {
     /// @param _unstakingPeriod specified unstaking period
     function stake(uint256 _amount, uint256 _unstakingPeriod) external;
 
-    /// @notice Stake specified amount of $BRO tokens via one of the protocol member
+    /// @notice Stake specified amount of $BRO tokens via one of the protocol members
     /// @param _stakerAddress staker's address
     /// @param _amount bonded amount that will be staked
     /// @param _unstakingPeriod specified unstaking period
