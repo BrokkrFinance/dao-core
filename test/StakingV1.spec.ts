@@ -249,6 +249,9 @@ describe("Staking V1", function () {
     expect(unstakingPeriods[13].rewardsGeneratingAmount.toString().substring(0, 4)).to.equal("1000")
 
     expect((await this.staking.totalBroStaked()).toString().substring(0, 8)).to.equal("11762575")
+    expect((await this.staking.totalStakerRewardsGeneratingBro(this.mark.address)).toString().substring(0, 8)).to.equal(
+      (await this.staking.totalBroStaked()).toString().substring(0, 8)
+    )
     expect(await this.staking.globalBroRewardIndex()).to.equal(0)
 
     // distibute and skip 1 epoch
@@ -300,6 +303,10 @@ describe("Staking V1", function () {
     expect(staker.withdrawals[0].lockedAmount.toString().substring(0, 4)).to.equal("3250")
     expect(staker.withdrawals[0].unstakingPeriod).to.equal(14)
     expect((await this.staking.totalBroStaked()).toString().substring(0, 8)).to.equal("14249479") // 7499 + 6749
+
+    expect((await this.staking.totalStakerRewardsGeneratingBro(this.mark.address)).toString().substring(0, 8)).to.equal(
+      "14249479"
+    ) // 7499 + 6749
 
     await expect(this.staking.connect(this.mark).cancelUnstaking(ethers.utils.parseEther("1"), 15)).to.be.revertedWith(
       "WithdrawalNotFound(1000000000000000000, 15)"
