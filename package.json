@@ -59,7 +59,10 @@
     "lint:check": "prettier --check '**.sol' && prettier --check '**.js' && prettier --check '**.ts' && hardhat compile && npx solhint --config ./.solhint.json --ignore-path ./.solhintignore 'contracts/**/*.sol'",
     "prepare": "husky install",
     "postinstall": "husky install",
-    "lint-staged": "lint-staged;hardhat compile && npx solhint --config ./.solhint.json --ignore-path ./.solhintignore 'contracts/**/*.sol'"
+    "lint-staged": "lint-staged;hardhat compile && npx solhint --config ./.solhint.json --ignore-path ./.solhintignore 'contracts/**/*.sol'",
+    "deploy:localhost": "hardhat run --network localhost scripts/deploy.local.ts",
+    "deploy:testnet": "hardhat run --network avax_testnet scripts/deploy.testnet.ts",
+    "deploy:mainnet": "hardhat run --network avax_mainnet scripts/deploy.mainnet.ts"
   },
   "lint-staged": {
     "*.sol": "prettier --write",
