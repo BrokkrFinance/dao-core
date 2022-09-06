@@ -95,8 +95,6 @@ export async function deploy(configName: string, artifactName: string) {
   ])
   await staking.deployed()
 
-  await staking.transferOwnership(config.ownerWallet)
-
   // COMMUNITY BONDING
   const communityBonding = await upgrades.deployProxy(BondingV1, [
     epochManager.address,
@@ -121,6 +119,11 @@ export async function deploy(configName: string, artifactName: string) {
   await protocolMigrator.deployed()
 
   await protocolMigrator.transferOwnership(config.ownerWallet)
+
+  // whitelist community bonding and protocol migrator
+  await staking.addProtocolMember(communityBonding.address)
+  await staking.addProtocolMember(protocolMigrator.address)
+  await staking.transferOwnership(config.ownerWallet)
 
   writeArtifact(artifactName, {
     broToken: broToken.address,
