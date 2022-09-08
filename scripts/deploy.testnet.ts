@@ -1,5 +1,7 @@
+import { deploy } from "./deployer"
+
 async function main() {
-  console.log("Nothing")
+  await deploy("testnet", "testnet")
 }
 
 main().catch((error) => {

@@ -1,0 +1,29 @@
+{
+  "ownerWallet": "0x5a39059cc09425aB39719F909Ac57fD2dfac19eE",
+  "tokenDistributor": {
+    "distributionStart": 86400
+  },
+  "normalBonding": {
+    "minBroPayout": "100",
+    "vestingPeriod": 14
+  },
+  "staking": {
+    "minBroStakeAmount": "100",
+    "minUnstakingPeriod": 14,
+    "maxUnstakingPeriod": 365,
+    "maxUnstakingPeriodsPerStaker": 5,
+    "maxWithdrawalsPerUnstakingPeriod": 6,
+    "rewardGeneratingAmountBaseIndex": 7400,
+    "withdrawalAmountReducePerc": 90,
+    "withdrawnBBroRewardReducePerc": 50,
+    "bBroRewardsBaseIndex": 3000,
+    "bBroRewardsXtraMultiplier": 10
+  },
+  "communityBonding": {
+    "unstakingPeriod": 365
+  },
+  "protocolMigrator": {
+    "owner": "0x5a39059cc09425aB39719F909Ac57fD2dfac19eE",
+    "unstakingPeriod": 100
+  }
+}
