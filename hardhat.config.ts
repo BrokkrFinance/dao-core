@@ -38,12 +38,12 @@ const config: HardhatUserConfig = {
     avax_mainnet: {
       url: "https://api.avax.network/ext/bc/C/rpc",
       chainId: 43114,
-      accounts: [`0x${process.env.PRIVATE_KEY}`],
+      accounts: [`0x${process.env.MAINNET_PRIVATE_KEY}`],
     },
     avax_testnet: {
       url: "https://api.avax-test.network/ext/bc/C/rpc",
       chainId: 43113,
-      accounts: [`0x${process.env.PRIVATE_KEY}`],
+      accounts: [`0x${process.env.TESTNET_PRIVATE_KEY}`],
     },
   },
   gasReporter: {
