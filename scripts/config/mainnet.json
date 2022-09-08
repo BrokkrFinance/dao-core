@@ -23,6 +23,7 @@
     "unstakingPeriod": 365
   },
   "protocolMigrator": {
+    "owner": "0x5a39059cc09425aB39719F909Ac57fD2dfac19eE",
     "unstakingPeriod": 14
   }
 }

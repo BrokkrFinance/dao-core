@@ -118,7 +118,7 @@ export async function deploy(configName: string, artifactName: string) {
   )
   await protocolMigrator.deployed()
 
-  await protocolMigrator.transferOwnership(config.ownerWallet)
+  await protocolMigrator.transferOwnership(config.protocolMigrator.owner)
 
   // whitelist community bonding and protocol migrator
   await staking.addProtocolMember(communityBonding.address)
@@ -180,6 +180,7 @@ interface Config {
     unstakingPeriod: number
   }
   protocolMigrator: {
+    owner: string
     unstakingPeriod: number
   }
 }
