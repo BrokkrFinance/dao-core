@@ -156,7 +156,7 @@ In order to make the receive the staked BRO again in the users wallet, the user 
 After the unstaking period is over, the user can claim BRO and receives BRO in her wallet.
 
 When staking, the user can select how long the unstaking period should be of the staked amount of BRO.
-The longer the unstaking period, the higher the _bBRO_ rewards.
+The longer the unstaking period, the higher the _BRO_ and _bBRO_ rewards.
 
 Once a user has staked BRO, she can claim rewards every epoch.
 
