@@ -287,9 +287,26 @@ contract StakingV1 is
         external
         whenNotPaused
     {
+        _unstake(_msgSender(), _amount, _unstakingPeriod);
+    }
+
+    /// @inheritdoc IStakingV1
+    function protocolMemberUnstake(
+        address _stakerAddress,
+        uint256 _amount,
+        uint256 _unstakingPeriod
+    ) external onlyProtocolMember whenNotPaused {
+        _unstake(_stakerAddress, _amount, _unstakingPeriod);
+    }
+
+    function _unstake(
+        address _stakerAddress,
+        uint256 _amount,
+        uint256 _unstakingPeriod
+    ) private {
         Staker storage staker = _updateStaker(
-            _msgSender(),
-            _getStakerWithRecalculatedRewards(_msgSender())
+            _stakerAddress,
+            _getStakerWithRecalculatedRewards(_stakerAddress)
         );
 
         (uint256 unstakingPeriodPos, bool exists) = _findUnstakingPeriod(
@@ -359,7 +376,7 @@ contract StakingV1 is
             unstakingPeriod.rewardsGeneratingAmount +
             withdrawal.rewardsGeneratingAmount;
 
-        emit Unstaked(_msgSender(), _amount, unstakingPeriod.unstakingPeriod);
+        emit Unstaked(_stakerAddress, _amount, unstakingPeriod.unstakingPeriod);
     }
 
     /// @inheritdoc IStakingV1

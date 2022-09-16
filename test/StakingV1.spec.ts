@@ -171,6 +171,12 @@ describe("Staking V1", function () {
     await expect(this.staking.connect(this.paul).setBBroRewardsXtraMultiplier(11)).to.be.revertedWith(
       "Ownable: caller is not the owner"
     )
+    await expect(
+      this.staking.protocolMemberStake(this.mark.address, ethers.utils.parseEther("1.0"), 15)
+    ).to.be.revertedWith("Caller is not the protocol member")
+    await expect(
+      this.staking.protocolMemberUnstake(this.mark.address, ethers.utils.parseEther("1.0"), 15)
+    ).to.be.revertedWith("Caller is not the protocol member")
   })
 
   it("should not allow to use it's functionality when paused", async function () {
@@ -280,6 +286,14 @@ describe("Staking V1", function () {
     staker = await this.staking.getStakerInfo(this.mark.address)
     expect(staker.unstakingPeriods.length).to.equal(15)
     expect(staker.unstakingPeriods[14].rewardsGeneratingAmount.toString().substring(0, 4)).to.equal("7506")
+
+    // must properly unstake via protocolMemberUnstake
+    await this.staking
+      .connect(this.communityBonding)
+      .protocolMemberUnstake(this.mark.address, ethers.utils.parseEther("1"), 15)
+
+    staker = await this.staking.getStakerInfo(this.mark.address)
+    expect(staker.withdrawals.length).to.equal(1)
   })
 
   it("should properly handle total staked bro and rewards generating amounts while unstaking", async function () {

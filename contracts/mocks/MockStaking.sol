@@ -25,6 +25,12 @@ contract MockStakingV1 is IStakingV1 {
 
     function unstake(uint256, uint256) external pure {}
 
+    function protocolMemberUnstake(
+        address _stakerAddress,
+        uint256 _amount,
+        uint256 _unstakingPeriod
+    ) external pure {}
+
     function withdraw() external pure {}
 
     function cancelUnstaking(uint256, uint256) external pure {}

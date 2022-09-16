@@ -232,6 +232,11 @@ contract BondingV1 is
                 broPayout,
                 unstakingPeriod
             );
+            broStaking.protocolMemberUnstake(
+                _msgSender(),
+                broPayout,
+                unstakingPeriod
+            );
         }
 
         emit BondPerformed(_token, _amount);
