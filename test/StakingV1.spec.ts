@@ -436,9 +436,14 @@ describe("Staking V1", function () {
     currentTime += 86400 * 12
     await setBlockchainTime(ethers.provider, currentTime)
 
+    expect((await this.staking.totalBroStaked()).toString().substring(0, 8)).to.equal("14249479")
+
     await expect(this.staking.connect(this.mark).withdraw())
       .to.emit(this.staking, "Withdrawn")
       .withArgs(this.mark.address, "500000000000000000")
+
+    // withdrawn rewards generating amount must be substructed
+    expect((await this.staking.totalBroStaked()).toString().substring(0, 8)).to.equal("10874602")
 
     await this.staking.connect(this.mark).unstake(ethers.utils.parseEther("1"), 14)
 

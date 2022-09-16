@@ -372,6 +372,7 @@ contract StakingV1 is
         uint256 epoch = epochManager.getEpoch();
 
         uint256 withdrawAmount = 0;
+        uint256 totalRewardsGeneratingAmount = 0;
         uint256 i = 0;
         while (i < staker.withdrawals.length) {
             Withdrawal memory withdrawal = staker.withdrawals[i];
@@ -381,6 +382,8 @@ contract StakingV1 is
 
             // solhint-disable-next-line not-rely-on-time
             if (withdrawalExpiresAt <= block.timestamp) {
+                totalRewardsGeneratingAmount += withdrawal
+                    .rewardsGeneratingAmount;
                 withdrawAmount +=
                     withdrawal.rewardsGeneratingAmount +
                     withdrawal.lockedAmount;
@@ -422,6 +425,8 @@ contract StakingV1 is
                 k++;
             }
         }
+
+        totalBroStaked -= totalRewardsGeneratingAmount;
 
         broToken.safeTransfer(_msgSender(), withdrawAmount);
         emit Withdrawn(_msgSender(), withdrawAmount);
