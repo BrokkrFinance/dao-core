@@ -287,9 +287,26 @@ contract StakingV1 is
         external
         whenNotPaused
     {
+        _unstake(_msgSender(), _amount, _unstakingPeriod);
+    }
+
+    /// @inheritdoc IStakingV1
+    function protocolMemberUnstake(
+        address _stakerAddress,
+        uint256 _amount,
+        uint256 _unstakingPeriod
+    ) external onlyProtocolMember whenNotPaused {
+        _unstake(_stakerAddress, _amount, _unstakingPeriod);
+    }
+
+    function _unstake(
+        address _stakerAddress,
+        uint256 _amount,
+        uint256 _unstakingPeriod
+    ) private {
         Staker storage staker = _updateStaker(
-            _msgSender(),
-            _getStakerWithRecalculatedRewards(_msgSender())
+            _stakerAddress,
+            _getStakerWithRecalculatedRewards(_stakerAddress)
         );
 
         (uint256 unstakingPeriodPos, bool exists) = _findUnstakingPeriod(
@@ -359,7 +376,7 @@ contract StakingV1 is
             unstakingPeriod.rewardsGeneratingAmount +
             withdrawal.rewardsGeneratingAmount;
 
-        emit Unstaked(_msgSender(), _amount, unstakingPeriod.unstakingPeriod);
+        emit Unstaked(_stakerAddress, _amount, unstakingPeriod.unstakingPeriod);
     }
 
     /// @inheritdoc IStakingV1
@@ -372,6 +389,7 @@ contract StakingV1 is
         uint256 epoch = epochManager.getEpoch();
 
         uint256 withdrawAmount = 0;
+        uint256 totalRewardsGeneratingAmount = 0;
         uint256 i = 0;
         while (i < staker.withdrawals.length) {
             Withdrawal memory withdrawal = staker.withdrawals[i];
@@ -381,6 +399,8 @@ contract StakingV1 is
 
             // solhint-disable-next-line not-rely-on-time
             if (withdrawalExpiresAt <= block.timestamp) {
+                totalRewardsGeneratingAmount += withdrawal
+                    .rewardsGeneratingAmount;
                 withdrawAmount +=
                     withdrawal.rewardsGeneratingAmount +
                     withdrawal.lockedAmount;
@@ -422,6 +442,8 @@ contract StakingV1 is
                 k++;
             }
         }
+
+        totalBroStaked -= totalRewardsGeneratingAmount;
 
         broToken.safeTransfer(_msgSender(), withdrawAmount);
         emit Withdrawn(_msgSender(), withdrawAmount);

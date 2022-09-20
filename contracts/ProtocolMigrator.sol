@@ -51,6 +51,10 @@ contract ProtocolMigrator is Ownable {
                 _userMigrations[i].bBroInWalletBalance
             );
 
+            broToken.safeApprove(
+                address(staking),
+                _userMigrations[i].stakedBro
+            );
             staking.protocolMemberStake(
                 _userMigrations[i].account,
                 _userMigrations[i].stakedBro,

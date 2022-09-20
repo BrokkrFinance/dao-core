@@ -200,6 +200,17 @@ interface IStakingV1 {
     /// @param _unstakingPeriod specified unstaking period
     function unstake(uint256 _amount, uint256 _unstakingPeriod) external;
 
+    /// @notice Unstakes specified amount of $BRO tokens via one of the protocol members.
+    /// Unstaking period starts at this moment of time.
+    /// @param _stakerAddress staker's address
+    /// @param _amount specified amount to unstake
+    /// @param _unstakingPeriod specified unstaking period
+    function protocolMemberUnstake(
+        address _stakerAddress,
+        uint256 _amount,
+        uint256 _unstakingPeriod
+    ) external;
+
     /// @notice Removes all expired withdrawals and transferes unstaked amount to the staker
     function withdraw() external;
 
