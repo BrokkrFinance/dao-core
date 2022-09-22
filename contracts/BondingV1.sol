@@ -304,6 +304,10 @@ contract BondingV1 is
         _setDistributor(_newDistributor);
     }
 
+    function setTreasury(address _newTreasury) external onlyOwner {
+        treasury = _newTreasury;
+    }
+
     function supportsDistributions() public pure returns (bool) {
         return true;
     }
