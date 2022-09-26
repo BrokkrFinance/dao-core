@@ -1,0 +1,17 @@
+{
+  "broToken": "0x65031e28Cb0E8CC21Ae411f9dD22c9b1bd260Ce4",
+  "bBroToken": "0x53d8FEde675825db0fCA6FF3e25D46b7510e8c8b",
+  "epochManager": "0xDE286b37614273a816AB5E00aF1DcD81B8719560",
+  "vesting": "0xEB189363DfA04DC79CBf978cE4438985F5059511",
+  "airdrop": "0xB9e43f150cA48213c9e9e2aa5837274Cd11fb208",
+  "tokenDistributor": "0xDa332C26AaE7868A16D5cda6f0e91001938AD9a2",
+  "treasury": "0x01aBb4e5DeeCdf04f4c5E68202697907515bbA8B",
+  "normalBonding": "sex_on_the_beach",
+  "staking": "0xa3a54fe9231D61D7Afa57c92DB6B669f86a33EBd",
+  "communityBonding": "0x206Ad86E6Cc9C4D20497a06bD62Dbc377c0dCb4a",
+  "protocolMigrator": "0x03D2c0b2Ee66493E8881c3B7Ab1dE74Fd8e99d5c",
+  "communityPool": "0x651Bb61beB931588e6392fc93C56ED2cd238D29B",
+  "operationalReserve": "0xAa91C112C47A839BF0F237c0cB592Bc98dea0674",
+  "idoTreasury": "0x8648A547d92DA409cf8682212d9549c3f1eBa9e7",
+  "vestingTreasury": "0x71759623D91C17f0d5f90CF7EF6829CE33F8A697"
+}

@@ -41,25 +41,35 @@ contract ProtocolMigrator is Ownable {
         onlyOwner
     {
         for (uint256 i = 0; i < _userMigrations.length; i++) {
-            broToken.safeTransfer(
-                _userMigrations[i].account,
-                _userMigrations[i].broInWalletBalance
-            );
+            if (_userMigrations[i].broInWalletBalance != 0) {
+                broToken.safeTransfer(
+                    _userMigrations[i].account,
+                    _userMigrations[i].broInWalletBalance
+                );
+            }
 
-            bBroToken.mint(
-                _userMigrations[i].account,
-                _userMigrations[i].bBroInWalletBalance
-            );
+            if (_userMigrations[i].bBroInWalletBalance != 0) {
+                bBroToken.mint(
+                    _userMigrations[i].account,
+                    _userMigrations[i].bBroInWalletBalance
+                );
+            }
 
-            broToken.safeApprove(
-                address(staking),
-                _userMigrations[i].stakedBro
-            );
-            staking.protocolMemberStake(
-                _userMigrations[i].account,
-                _userMigrations[i].stakedBro,
-                unstakingPeriod
-            );
+            if (_userMigrations[i].stakedBro != 0) {
+                broToken.safeApprove(
+                    address(staking),
+                    _userMigrations[i].stakedBro
+                );
+                staking.protocolMemberStake(
+                    _userMigrations[i].account,
+                    _userMigrations[i].stakedBro,
+                    unstakingPeriod
+                );
+            }
         }
+    }
+
+    function withdrawRemainingBro() external onlyOwner {
+        broToken.safeTransfer(super.owner(), broToken.balanceOf(address(this)));
     }
 }
