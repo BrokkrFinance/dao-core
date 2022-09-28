@@ -51,16 +51,10 @@ export async function deploy(configName: string, artifactName: string) {
 
   await broToken.transferOwnership(config.ownerWallet)
 
-  console.log("BRO TOKEN DEPLOYED")
-  await sleep(5000)
-
   // BBRO TOKEN
   const BBroToken = await ethers.getContractFactory("BBroToken")
   const bbroToken = await upgrades.deployProxy(BBroToken, ["bBRO Token", "bBRO"])
   await bbroToken.deployed()
-
-  console.log("BBRO TOKEN DEPLOYED")
-  await sleep(5000)
 
   // EPOCH MANAGER
   const EpochManager = await ethers.getContractFactory("EpochManager")
@@ -69,9 +63,6 @@ export async function deploy(configName: string, artifactName: string) {
 
   await epochManager.transferOwnership(config.ownerWallet)
 
-  console.log("EPOCH MANAGER DEPLOYED")
-  await sleep(5000)
-
   // VESTING
   const Vesting = await ethers.getContractFactory("Vesting")
   const vesting = await Vesting.deploy(broToken.address)
@@ -79,18 +70,12 @@ export async function deploy(configName: string, artifactName: string) {
 
   await vesting.transferOwnership(config.ownerWallet)
 
-  console.log("VESTING DEPLOYED")
-  await sleep(5000)
-
   // AIRDROP
   const Airdrop = await ethers.getContractFactory("Airdrop")
   const airdrop = await Airdrop.deploy(broToken.address)
   await airdrop.deployed()
 
   await airdrop.transferOwnership(config.ownerWallet)
-
-  console.log("AIRDROP DEPLOYED")
-  await sleep(5000)
 
   // TOKEN DISTRIBUTOR
   const TokenDistributor = await ethers.getContractFactory("TokenDistributor")
@@ -101,9 +86,6 @@ export async function deploy(configName: string, artifactName: string) {
   )
   await tokenDistributor.deployed()
 
-  console.log("TOKEN DISTRIBUTOR")
-  await sleep(5000)
-
   // TREASURY
   const Treasury = await ethers.getContractFactory("Treasury")
   const treasury = await Treasury.deploy([])
@@ -111,22 +93,19 @@ export async function deploy(configName: string, artifactName: string) {
 
   await treasury.transferOwnership(config.ownerWallet)
 
-  console.log("TREASURY")
-  await sleep(5000)
-
   // NORMAL BONDING
   const BondingV1 = await ethers.getContractFactory("BondingV1")
-  // const normalBonding = await upgrades.deployProxy(BondingV1, [
-  //   epochManager.address,
-  //   broToken.address,
-  //   treasury.address,
-  //   tokenDistributor.address,
-  //   config.normalBonding.minBroPayout,
-  // ])
-  // await normalBonding.deployed()
+  const normalBonding = await upgrades.deployProxy(BondingV1, [
+    epochManager.address,
+    broToken.address,
+    treasury.address,
+    tokenDistributor.address,
+    config.normalBonding.minBroPayout,
+  ])
+  await normalBonding.deployed()
 
-  // await normalBonding.setNormalMode(config.normalBonding.vestingPeriod)
-  // await normalBonding.transferOwnership(config.ownerWallet)
+  await normalBonding.setNormalMode(config.normalBonding.vestingPeriod)
+  await normalBonding.transferOwnership(config.ownerWallet)
 
   // STAKING
   const Staking = await ethers.getContractFactory("StakingV1")
@@ -151,9 +130,6 @@ export async function deploy(configName: string, artifactName: string) {
   ])
   await staking.deployed()
 
-  console.log("STAKING")
-  await sleep(5000)
-
   // COMMUNITY BONDING
   const communityBonding = await upgrades.deployProxy(BondingV1, [
     epochManager.address,
@@ -164,16 +140,9 @@ export async function deploy(configName: string, artifactName: string) {
   ])
   await communityBonding.deployed()
 
-  console.log("COMMUNITY BONDING")
-  await sleep(5000)
-
   await communityBonding.setCommunityMode(staking.address, config.communityBonding.unstakingPeriod)
-  console.log("COMMUNITY MODE SET")
-  await sleep(5000)
 
   await communityBonding.transferOwnership(config.ownerWallet)
-  console.log("")
-  await sleep(5000)
 
   // PROTOCOL MIGRATOR
   const ProtocolMigrator = await ethers.getContractFactory("ProtocolMigrator")
@@ -187,28 +156,17 @@ export async function deploy(configName: string, artifactName: string) {
 
   await protocolMigrator.transferOwnership(config.protocolMigrator.owner)
 
-  console.log("PROTOCOL MIGRATOR DEPLOYED")
-  await sleep(5000)
-
   // whitelist community bonding and protocol migrator
   await retryUntilSuccess(staking.addProtocolMember(communityBonding.address))
-  console.log("1")
   await retryUntilSuccess(staking.addProtocolMember(protocolMigrator.address))
-  console.log("2")
   await retryUntilSuccess(staking.transferOwnership(config.ownerWallet))
-  console.log("3")
 
-  // await retryUntilSuccess(bbroToken.whitelistAddress(staking.address))
-  // console.log("4")
-  // await retryUntilSuccess(bbroToken.whitelistAddress(protocolMigrator.address))
-  // console.log("5")
-  // await retryUntilSuccess(bbroToken.transferOwnership(config.ownerWallet))
-  // console.log("6")
+  await retryUntilSuccess(bbroToken.whitelistAddress(staking.address))
+  await retryUntilSuccess(bbroToken.whitelistAddress(protocolMigrator.address))
+  await retryUntilSuccess(bbroToken.transferOwnership(config.ownerWallet))
 
-  // await retryUntilSuccess(tokenDistributor.addDistribution(staking.address, ethers.utils.parseEther("125000")))
-  // console.log("7")
-  // await retryUntilSuccess(tokenDistributor.transferOwnership(config.ownerWallet))
-  // console.log("8")
+  await retryUntilSuccess(tokenDistributor.addDistribution(staking.address, ethers.utils.parseEther("125000")))
+  await retryUntilSuccess(tokenDistributor.transferOwnership(config.ownerWallet))
 
   writeArtifact(artifactName, {
     broToken: broToken.address,
