@@ -1,7 +1,8 @@
 {
+  "broBalanceHolder": "0xDE971dAc0009Dfb373AcEE32F94777AF2E38e56C",
   "ownerWallet": "0xE8855828fEC29dc6860A4362BCb386CCf6C0c601",
   "tokenDistributor": {
-    "distributionStart": 0
+    "distributionStart": 1664280000
   },
   "normalBonding": {
     "minBroPayout": "10000000000",
@@ -23,7 +24,7 @@
     "unstakingPeriod": 365
   },
   "protocolMigrator": {
-    "owner": "0x5a39059cc09425aB39719F909Ac57fD2dfac19eE",
+    "owner": "0xDE971dAc0009Dfb373AcEE32F94777AF2E38e56C",
     "unstakingPeriod": 14
   }
 }

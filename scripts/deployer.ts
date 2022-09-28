@@ -1,13 +1,52 @@
+import { expect } from "chai"
 import * as fs from "fs"
 import { ethers, upgrades } from "hardhat"
 import path from "path"
+
+async function sleep(timeout: number) {
+  await new Promise((resolve) => setTimeout(resolve, timeout))
+}
+
+async function retryUntilSuccess<T>(fut: Promise<T>) {
+  while (true) {
+    try {
+      const resolved = await expectSuccess(fut)
+      if (resolved !== undefined) {
+        return resolved
+      } else {
+        console.log(`Error because resolved promise is undefined`)
+      }
+    } catch (e: unknown) {
+      console.log(`Error when expecting Success: ${e}`)
+    }
+  }
+}
+
+async function expectSuccess<T>(fut: Promise<T>) {
+  let resolvedPromise: Promise<T>
+  try {
+    const resolved = await fut
+    resolvedPromise = new Promise<T>((resolve, reject) => {
+      resolve(resolved)
+    })
+  } catch (e: any) {
+    resolvedPromise = new Promise((resolve, reject) => {
+      throw e
+    })
+    if ("error" in e) {
+      console.log(e.error)
+    } else console.log(e)
+  }
+  await expect(resolvedPromise).not.to.be.reverted
+  return await resolvedPromise
+}
 
 export async function deploy(configName: string, artifactName: string) {
   const config = readConfig(configName)
 
   // BRO TOKEN
   const BroToken = await ethers.getContractFactory("BroToken")
-  const broToken = await BroToken.deploy("Bro Token", "BRO", config.ownerWallet)
+  const broToken = await BroToken.deploy("Bro Token", "BRO", config.broBalanceHolder)
   await broToken.deployed()
 
   await broToken.transferOwnership(config.ownerWallet)
@@ -16,8 +55,6 @@ export async function deploy(configName: string, artifactName: string) {
   const BBroToken = await ethers.getContractFactory("BBroToken")
   const bbroToken = await upgrades.deployProxy(BBroToken, ["bBRO Token", "bBRO"])
   await bbroToken.deployed()
-
-  await bbroToken.transferOwnership(config.ownerWallet)
 
   // EPOCH MANAGER
   const EpochManager = await ethers.getContractFactory("EpochManager")
@@ -48,8 +85,6 @@ export async function deploy(configName: string, artifactName: string) {
     config.tokenDistributor.distributionStart
   )
   await tokenDistributor.deployed()
-
-  await tokenDistributor.transferOwnership(config.ownerWallet)
 
   // TREASURY
   const Treasury = await ethers.getContractFactory("Treasury")
@@ -106,6 +141,7 @@ export async function deploy(configName: string, artifactName: string) {
   await communityBonding.deployed()
 
   await communityBonding.setCommunityMode(staking.address, config.communityBonding.unstakingPeriod)
+
   await communityBonding.transferOwnership(config.ownerWallet)
 
   // PROTOCOL MIGRATOR
@@ -121,9 +157,16 @@ export async function deploy(configName: string, artifactName: string) {
   await protocolMigrator.transferOwnership(config.protocolMigrator.owner)
 
   // whitelist community bonding and protocol migrator
-  await staking.addProtocolMember(communityBonding.address)
-  await staking.addProtocolMember(protocolMigrator.address)
-  await staking.transferOwnership(config.ownerWallet)
+  await retryUntilSuccess(staking.addProtocolMember(communityBonding.address))
+  await retryUntilSuccess(staking.addProtocolMember(protocolMigrator.address))
+  await retryUntilSuccess(staking.transferOwnership(config.ownerWallet))
+
+  await retryUntilSuccess(bbroToken.whitelistAddress(staking.address))
+  await retryUntilSuccess(bbroToken.whitelistAddress(protocolMigrator.address))
+  await retryUntilSuccess(bbroToken.transferOwnership(config.ownerWallet))
+
+  await retryUntilSuccess(tokenDistributor.addDistribution(staking.address, ethers.utils.parseEther("125000")))
+  await retryUntilSuccess(tokenDistributor.transferOwnership(config.ownerWallet))
 
   writeArtifact(artifactName, {
     broToken: broToken.address,
@@ -133,7 +176,7 @@ export async function deploy(configName: string, artifactName: string) {
     airdrop: airdrop.address,
     tokenDistributor: tokenDistributor.address,
     treasury: treasury.address,
-    normalBonding: normalBonding.address,
+    normalBonding: "sex_on_the_beach", // normalBonding.address,
     staking: staking.address,
     communityBonding: communityBonding.address,
     protocolMigrator: protocolMigrator.address,
@@ -156,6 +199,7 @@ function writeArtifact(artifactName: string, artifact: Artifact) {
 }
 
 interface Config {
+  broBalanceHolder: string
   ownerWallet: string
   tokenDistributor: {
     distributionStart: number

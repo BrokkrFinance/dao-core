@@ -55,6 +55,9 @@ const config: HardhatUserConfig = {
     runOnCompile: true,
     strict: true,
   },
+  etherscan: {
+    apiKey: `${process.env.ETHERSCAN_KEY}`,
+  },
 }
 
 export default config
