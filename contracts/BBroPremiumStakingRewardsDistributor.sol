@@ -100,6 +100,17 @@ contract BBroPremiumStakingRewardsDistributor is Ownable {
             }
         }
 
+        for (uint256 i = 0; i < staker.withdrawals.length; i++) {
+            if (
+                staker.withdrawals[i].unstakingPeriod >=
+                minUnstakingPeriodForXtraReward
+            ) {
+                amountForReward +=
+                    staker.withdrawals[i].rewardsGeneratingAmount +
+                    staker.withdrawals[i].lockedAmount;
+            }
+        }
+
         return amountForReward;
     }
 

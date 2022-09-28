@@ -38,7 +38,7 @@ describe("BBroPremiumStakingRewards", function () {
   })
 
   it("should allow to claim reward only for elligible stakers", async function () {
-    expect(await this.rewards.availableBBroAmountToClaim(this.mark.address)).to.equal("60")
+    expect(await this.rewards.availableBBroAmountToClaim(this.mark.address)).to.equal("90")
     expect(await this.rewards.availableBBroAmountToClaim(this.paul.address)).to.equal(0)
     expect(await this.rewards.isClaimed(this.mark.address)).to.equal(false)
 
@@ -55,7 +55,7 @@ describe("BBroPremiumStakingRewards", function () {
   })
 
   it("should allow whitelisted accounts to claim with extra perc", async function () {
-    expect(await this.rewards.availableBBroAmountToClaim(this.mark.address)).to.equal("60")
+    expect(await this.rewards.availableBBroAmountToClaim(this.mark.address)).to.equal("90")
     expect(await this.rewards.availableBBroAmountToClaim(this.paul.address)).to.equal(0)
     expect(await this.rewards.isWhitelisted(this.mark.address)).to.equal(false)
 
@@ -64,11 +64,11 @@ describe("BBroPremiumStakingRewards", function () {
 
     expect(await this.rewards.isWhitelisted(this.mark.address)).to.equal(true)
     expect(await this.rewards.isWhitelisted(this.paul.address)).to.equal(true)
-    expect(await this.rewards.availableBBroAmountToClaim(this.mark.address)).to.equal("63") // 5% increase
+    expect(await this.rewards.availableBBroAmountToClaim(this.mark.address)).to.equal("94") // 5% increase
     expect(await this.rewards.availableBBroAmountToClaim(this.paul.address)).to.equal(0)
 
     await this.rewards.connect(this.mark).claim()
-    expect(await this.bbroToken.balanceOf(this.mark.address)).to.equal("63")
+    expect(await this.bbroToken.balanceOf(this.mark.address)).to.equal("94")
     expect(await this.rewards.isClaimed(this.mark.address)).to.equal(true)
   })
 

@@ -60,6 +60,7 @@ contract MockStakingV1 is IStakingV1 {
         sa.unstakingPeriods.push(UnstakingPeriod(100, 100, 365));
         sa.unstakingPeriods.push(UnstakingPeriod(200, 200, 365));
         sa.unstakingPeriods.push(UnstakingPeriod(300, 200, 364));
+        sa.withdrawals.push(Withdrawal(300, 50, 1, 365));
 
         Staker storage sb = stakers[b];
         sb.unstakingPeriods.push(UnstakingPeriod(100, 100, 14));
