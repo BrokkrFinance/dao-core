@@ -2,11 +2,11 @@ import { expect } from "chai"
 import { ethers, network, upgrades } from "hardhat"
 import { currentBlockchainTime, setBlockchainTime } from "./utils/time"
 
-describe("BBroPremiumStakingRewards", function () {
+describe("XtraBBroRewarder", function () {
   before(async function () {
     this.BBroToken = await ethers.getContractFactory("BBroToken")
     this.MockStakingV1 = await ethers.getContractFactory("MockStakingV1")
-    this.BBroPremiumStakingRewards = await ethers.getContractFactory("BBroPremiumStakingRewardsDistributor")
+    this.XtraBBroRewarder = await ethers.getContractFactory("XtraBBroRewarder")
     this.signers = await ethers.getSigners()
     this.owner = this.signers[0]
     this.mark = this.signers[1]
@@ -21,12 +21,11 @@ describe("BBroPremiumStakingRewards", function () {
     await this.mockStaking.deployed()
     await this.mockStaking.feedMockStakers(this.mark.address, this.paul.address)
 
-    this.rewards = await this.BBroPremiumStakingRewards.deploy(
+    this.rewards = await this.XtraBBroRewarder.deploy(
       this.bbroToken.address,
       this.mockStaking.address,
       (await currentBlockchainTime(ethers.provider)) + 86400,
-      365,
-      365,
+      300,
       3000,
       10,
       30,
@@ -38,7 +37,9 @@ describe("BBroPremiumStakingRewards", function () {
   })
 
   it("should allow to claim reward only for elligible stakers", async function () {
-    expect(await this.rewards.availableBBroAmountToClaim(this.mark.address)).to.equal("90")
+    expect((await this.rewards.availableBBroAmountToClaim(this.mark.address)).toString().substring(0, 8)).to.equal(
+      "96786986"
+    )
     expect(await this.rewards.availableBBroAmountToClaim(this.paul.address)).to.equal(0)
     expect(await this.rewards.isClaimed(this.mark.address)).to.equal(false)
 
@@ -55,7 +56,9 @@ describe("BBroPremiumStakingRewards", function () {
   })
 
   it("should allow whitelisted accounts to claim with extra perc", async function () {
-    expect(await this.rewards.availableBBroAmountToClaim(this.mark.address)).to.equal("90")
+    expect((await this.rewards.availableBBroAmountToClaim(this.mark.address)).toString().substring(0, 8)).to.equal(
+      "96786986"
+    )
     expect(await this.rewards.availableBBroAmountToClaim(this.paul.address)).to.equal(0)
     expect(await this.rewards.isWhitelisted(this.mark.address)).to.equal(false)
 
@@ -64,11 +67,13 @@ describe("BBroPremiumStakingRewards", function () {
 
     expect(await this.rewards.isWhitelisted(this.mark.address)).to.equal(true)
     expect(await this.rewards.isWhitelisted(this.paul.address)).to.equal(true)
-    expect(await this.rewards.availableBBroAmountToClaim(this.mark.address)).to.equal("94") // 5% increase
+    expect((await this.rewards.availableBBroAmountToClaim(this.mark.address)).toString().substring(0, 8)).to.equal(
+      "10162633"
+    ) // 5% increase
     expect(await this.rewards.availableBBroAmountToClaim(this.paul.address)).to.equal(0)
 
     await this.rewards.connect(this.mark).claim()
-    expect(await this.bbroToken.balanceOf(this.mark.address)).to.equal("94")
+    expect((await this.bbroToken.balanceOf(this.mark.address)).toString().substring(0, 8)).to.equal("10162633")
     expect(await this.rewards.isClaimed(this.mark.address)).to.equal(true)
   })
 

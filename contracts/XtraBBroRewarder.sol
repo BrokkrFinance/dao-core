@@ -6,14 +6,13 @@ import { IStakingV1 } from "./interfaces/IStakingV1.sol";
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
-contract BBroPremiumStakingRewardsDistributor is Ownable {
+contract XtraBBroRewarder is Ownable {
     IERC20Mintable public bBroToken;
     IStakingV1 public staking;
 
     uint256 public couldBeClaimedUntil;
     uint256 public minUnstakingPeriodForXtraReward;
 
-    uint256 public unstakingPeriodForXtraRewards;
     uint256 public bBroRewardsBaseIndex; // .0000 number
     uint16 public bBroRewardsXtraMultiplier;
     uint256 public amountOfEpochsForXtraReward;
@@ -28,7 +27,6 @@ contract BBroPremiumStakingRewardsDistributor is Ownable {
         address staking_,
         uint256 couldBeClaimedUntil_,
         uint256 minUnstakingPeriodForXtraReward_,
-        uint256 unstakingPeriodForXtraRewards_,
         uint256 bBroRewardsBaseIndex_,
         uint16 bBroRewardsXtraMultiplier_,
         uint256 amountOfEpochsForXtraReward_,
@@ -38,7 +36,6 @@ contract BBroPremiumStakingRewardsDistributor is Ownable {
         staking = IStakingV1(staking_);
         couldBeClaimedUntil = couldBeClaimedUntil_;
         minUnstakingPeriodForXtraReward = minUnstakingPeriodForXtraReward_;
-        unstakingPeriodForXtraRewards = unstakingPeriodForXtraRewards_;
         bBroRewardsBaseIndex = bBroRewardsBaseIndex_;
         bBroRewardsXtraMultiplier = bBroRewardsXtraMultiplier_;
         amountOfEpochsForXtraReward = amountOfEpochsForXtraReward_;
@@ -60,13 +57,8 @@ contract BBroPremiumStakingRewardsDistributor is Ownable {
     }
 
     function claim() external onlyWhenEventIsNotOver onlyWhenNotClaimed {
-        uint256 broAmountForReward = _getAmountForReward(_msgSender());
-        require(broAmountForReward > 0, "Nothing to claim");
-
-        uint256 xtraBBroReward = _calculateXtraBBroReward(broAmountForReward);
-        if (terraMigratorsWhitelist[_msgSender()]) {
-            xtraBBroReward = (xtraBBroReward * terraMigratorExtraPerc) / 100;
-        }
+        uint256 xtraBBroReward = _calculateXtraBBroReward(_msgSender());
+        require(xtraBBroReward > 0, "Nothing to claim");
 
         claims[_msgSender()] = true;
         bBroToken.mint(_msgSender(), xtraBBroReward);
@@ -81,22 +73,24 @@ contract BBroPremiumStakingRewardsDistributor is Ownable {
         }
     }
 
-    function _getAmountForReward(address _staker)
+    function _calculateXtraBBroReward(address _staker)
         private
         view
         returns (uint256)
     {
-        uint256 amountForReward = 0;
-
         IStakingV1.Staker memory staker = staking.getStakerInfo(_staker);
+
+        uint256 bbroXtraReward = 0;
         for (uint256 i = 0; i < staker.unstakingPeriods.length; i++) {
             if (
                 staker.unstakingPeriods[i].unstakingPeriod >=
                 minUnstakingPeriodForXtraReward
             ) {
-                amountForReward +=
+                bbroXtraReward += _computeBBroReward(
                     staker.unstakingPeriods[i].rewardsGeneratingAmount +
-                    staker.unstakingPeriods[i].lockedAmount;
+                        staker.unstakingPeriods[i].lockedAmount,
+                    staker.unstakingPeriods[i].unstakingPeriod
+                );
             }
         }
 
@@ -105,26 +99,31 @@ contract BBroPremiumStakingRewardsDistributor is Ownable {
                 staker.withdrawals[i].unstakingPeriod >=
                 minUnstakingPeriodForXtraReward
             ) {
-                amountForReward +=
+                bbroXtraReward += _computeBBroReward(
                     staker.withdrawals[i].rewardsGeneratingAmount +
-                    staker.withdrawals[i].lockedAmount;
+                        staker.withdrawals[i].lockedAmount,
+                    staker.withdrawals[i].unstakingPeriod
+                );
             }
         }
 
-        return amountForReward;
+        if (terraMigratorsWhitelist[_staker]) {
+            bbroXtraReward = (bbroXtraReward * terraMigratorExtraPerc) / 100;
+        }
+
+        return bbroXtraReward;
     }
 
-    function _calculateXtraBBroReward(uint256 _broRewardAmount)
+    function _computeBBroReward(uint256 _amount, uint256 _unstakingPeriod)
         private
         view
         returns (uint256)
     {
         uint256 bBroEmissionRate = bBroRewardsBaseIndex +
             bBroRewardsXtraMultiplier *
-            (((unstakingPeriodForXtraRewards * unstakingPeriodForXtraRewards) *
-                1e18) / 1000000);
-        uint256 bBroPerEpochReward = ((bBroEmissionRate * _broRewardAmount) /
-            365) / 1e18;
+            (((_unstakingPeriod * _unstakingPeriod) * 1e18) / 1000000);
+        uint256 bBroPerEpochReward = ((bBroEmissionRate * _amount) / 365) /
+            1e18;
 
         return bBroPerEpochReward * amountOfEpochsForXtraReward;
     }
@@ -134,14 +133,7 @@ contract BBroPremiumStakingRewardsDistributor is Ownable {
         view
         returns (uint256)
     {
-        uint256 xtraBBroReward = _calculateXtraBBroReward(
-            _getAmountForReward(_account)
-        );
-        if (terraMigratorsWhitelist[_account]) {
-            xtraBBroReward = (xtraBBroReward * terraMigratorExtraPerc) / 100;
-        }
-
-        return xtraBBroReward;
+        return _calculateXtraBBroReward(_account);
     }
 
     function isClaimed(address _account) public view returns (bool) {
