@@ -57,12 +57,13 @@ contract MockStakingV1 is IStakingV1 {
 
     function feedMockStakers(address a, address b) external {
         Staker storage sa = stakers[a];
-        sa.unstakingPeriods.push(UnstakingPeriod(100, 100, 365));
-        sa.unstakingPeriods.push(UnstakingPeriod(200, 200, 365));
-        sa.unstakingPeriods.push(UnstakingPeriod(300, 200, 364));
+        sa.unstakingPeriods.push(UnstakingPeriod(100e18, 100e18, 350));
+        sa.unstakingPeriods.push(UnstakingPeriod(200e18, 200e18, 365));
+        sa.unstakingPeriods.push(UnstakingPeriod(300e18, 200e18, 299));
+        sa.withdrawals.push(Withdrawal(300e18, 50, 1, 365));
 
         Staker storage sb = stakers[b];
-        sb.unstakingPeriods.push(UnstakingPeriod(100, 100, 14));
-        sb.unstakingPeriods.push(UnstakingPeriod(200, 200, 200));
+        sb.unstakingPeriods.push(UnstakingPeriod(100e18, 100e18, 14));
+        sb.unstakingPeriods.push(UnstakingPeriod(200e18, 200e18, 299));
     }
 }
