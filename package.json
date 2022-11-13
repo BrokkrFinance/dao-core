@@ -37,7 +37,9 @@
     "hardhat-gas-reporter": "^1.0.4",
     "hardhat-solpp": "^1.0.1",
     "husky": "^8.0.1",
+    "keccak256": "^1.0.6",
     "lint-staged": ">=10",
+    "merkletreejs": "^0.2.31",
     "pinst": "^3.0.0",
     "prettier": "^2.3.2",
     "prettier-plugin-solidity": "^1.0.0-beta.13",
@@ -68,5 +70,8 @@
     "*.sol": "prettier --write",
     "*.js": "prettier --write",
     "*.ts": "prettier --write"
+  },
+  "dependencies": {
+    "@ethersproject/keccak256": "^5.7.0"
   }
 }
