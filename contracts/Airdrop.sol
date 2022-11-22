@@ -11,10 +11,16 @@ contract Airdrop is Ownable {
     using SafeERC20 for IERC20;
     using Counters for Counters.Counter;
 
-    IERC20 public immutable broToken;
+    struct ClaimStage {
+        bytes32 merkleRoot;
+        uint256 claimableUntil;
+    }
 
-    uint8 private stage = 0;
-    mapping(uint8 => bytes32) private merkleRoots;
+    IERC20 public immutable broToken;
+    address public immutable withdrawAt;
+
+    uint8 private currentStage = 0;
+    mapping(uint8 => ClaimStage) private stages;
     mapping(address => mapping(uint8 => bool)) private claims;
 
     mapping(uint8 => uint256) private claimedBroPerStage;
@@ -23,30 +29,35 @@ contract Airdrop is Ownable {
     event MerkleRootRegistered(uint8 stage, bytes32 indexed merkleRoot);
     event AirdropClaimed(uint8 stage, address indexed account, uint256 amount);
 
-    constructor(address token_) {
+    constructor(address token_, address _withdrawAt) {
         broToken = IERC20(token_);
+        withdrawAt = _withdrawAt;
     }
 
     modifier onlyWhenNotClaimed(uint8 _stage) {
-        require(_stage <= stage, "Specified stage does not exists.");
+        require(_stage <= currentStage, "Specified stage does not exists.");
         require(!claims[_msgSender()][_stage], "Reward already claimed.");
         _;
     }
 
     function registerMerkleRoot(
         uint256 _totalAirdropAmount,
-        bytes32 _merkleRoot
+        bytes32 _merkleRoot,
+        uint256 _claimableUntil
     ) external onlyOwner {
+        // solhint-disable-next-line not-rely-on-time
+        require(_claimableUntil > block.timestamp, "Invalid claim period");
+
         broToken.safeTransferFrom(
             _msgSender(),
             address(this),
             _totalAirdropAmount
         );
 
-        stage += 1;
-        merkleRoots[stage] = _merkleRoot;
+        currentStage += 1;
+        stages[currentStage] = ClaimStage(_merkleRoot, _claimableUntil);
 
-        emit MerkleRootRegistered(stage, _merkleRoot);
+        emit MerkleRootRegistered(currentStage, _merkleRoot);
     }
 
     function claim(
@@ -54,9 +65,15 @@ contract Airdrop is Ownable {
         bytes32[] calldata _merkleProof,
         uint256 _claimAmount
     ) external onlyWhenNotClaimed(_stage) {
+        require(
+            // solhint-disable-next-line not-rely-on-time
+            block.timestamp <= stages[_stage].claimableUntil,
+            "Claimable period is over."
+        );
+
         bytes32 leaf = keccak256(abi.encodePacked(_msgSender(), _claimAmount));
         require(
-            MerkleProof.verify(_merkleProof, merkleRoots[_stage], leaf),
+            MerkleProof.verify(_merkleProof, stages[_stage].merkleRoot, leaf),
             "Invalid Merkle Proof."
         );
 
@@ -68,12 +85,21 @@ contract Airdrop is Ownable {
         emit AirdropClaimed(_stage, _msgSender(), _claimAmount);
     }
 
-    function latestStage() public view returns (uint8) {
-        return stage;
+    function withdrawRemainings() external onlyOwner {
+        broToken.safeTransfer(withdrawAt, broToken.balanceOf(address(this)));
     }
 
-    function merkleRoot(uint8 _stage) public view returns (bytes32) {
-        return merkleRoots[_stage];
+    function latestStage() public view returns (uint8) {
+        return currentStage;
+    }
+
+    function claimStage(uint8 _stage) public view returns (ClaimStage memory) {
+        return stages[_stage];
+    }
+
+    function canClaimStage(uint8 _stage) public view returns (bool) {
+        // solhint-disable-next-line not-rely-on-time
+        return block.timestamp <= stages[_stage].claimableUntil;
     }
 
     function getClaimedBroPerStage(uint8 _stage) public view returns (uint256) {
