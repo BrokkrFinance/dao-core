@@ -17,7 +17,7 @@ contract Airdrop is Ownable {
     }
 
     IERC20 public immutable broToken;
-    address public immutable withdrawAt;
+    address public immutable withdrawTo;
 
     uint8 private currentStage = 0;
     mapping(uint8 => ClaimStage) private stages;
@@ -29,9 +29,9 @@ contract Airdrop is Ownable {
     event MerkleRootRegistered(uint8 stage, bytes32 indexed merkleRoot);
     event AirdropClaimed(uint8 stage, address indexed account, uint256 amount);
 
-    constructor(address token_, address _withdrawAt) {
+    constructor(address token_, address _withdrawTo) {
         broToken = IERC20(token_);
-        withdrawAt = _withdrawAt;
+        withdrawTo = _withdrawTo;
     }
 
     modifier onlyWhenNotClaimed(uint8 _stage) {
@@ -86,7 +86,7 @@ contract Airdrop is Ownable {
     }
 
     function withdrawRemainings() external onlyOwner {
-        broToken.safeTransfer(withdrawAt, broToken.balanceOf(address(this)));
+        broToken.safeTransfer(withdrawTo, broToken.balanceOf(address(this)));
     }
 
     function latestStage() public view returns (uint8) {
