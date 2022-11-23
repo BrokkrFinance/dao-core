@@ -1,0 +1,18 @@
+{
+  "stage": 1,
+  "merkleRoot": "0x33095a3ee49a44f2121cfa463a55b044476c5e4a498796532b19dc34c4c8d5ab",
+  "userProofs": [
+    {
+      "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+      "proof": [
+        "0x2ceccebe71d3406fcf430a74fd1fc7e2977f3b51b83304094afc8773d7ca5380"
+      ]
+    },
+    {
+      "address": "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
+      "proof": [
+        "0x60b804e11554b6c0d72577a181152f1554fd18169d7919971a6f80cd51eccb58"
+      ]
+    }
+  ]
+}
