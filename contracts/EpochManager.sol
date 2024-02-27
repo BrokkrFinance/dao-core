@@ -10,7 +10,7 @@ contract EpochManager is IEpochManager, Ownable {
 
     event EpochChanged(uint256 newEpoch);
 
-    constructor() {
+    constructor() Ownable(msg.sender) {
         epoch = 1 days;
     }
 

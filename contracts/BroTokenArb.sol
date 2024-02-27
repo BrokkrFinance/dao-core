@@ -3,19 +3,21 @@ pragma solidity ^0.8.0;
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import { ERC20Votes } from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Votes.sol";
+import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 
-contract BroToken is ERC20, Ownable {
-    uint256 public constant TOTAL_SUPPLY = 1_000_000_000e18;
-
+contract BroTokenArb is ERC20Votes, Ownable {
     string private _name; // re-declare name prop to be able to change it
     string private _symbol; // re-declare symbol prop to be able to change it
 
     constructor(
         string memory name_,
         string memory symbol_,
-        address initialHolder_
-    ) ERC20("", "") Ownable(msg.sender) {
-        _mint(initialHolder_, TOTAL_SUPPLY);
+        address initialHolder_,
+        uint256 initialSupply_,
+        address owner
+    ) ERC20("", "") EIP712("BrokkrFinance", "1") Ownable(owner) {
+        _mint(initialHolder_, initialSupply_);
 
         _name = name_;
         _symbol = symbol_;
@@ -35,5 +37,14 @@ contract BroToken is ERC20, Ownable {
 
     function symbol() public view override returns (string memory) {
         return _symbol;
+    }
+
+    function burn(uint256 value) public virtual {
+        _burn(_msgSender(), value);
+    }
+
+    function burnFrom(address account, uint256 value) public virtual {
+        _spendAllowance(account, _msgSender(), value);
+        _burn(account, value);
     }
 }

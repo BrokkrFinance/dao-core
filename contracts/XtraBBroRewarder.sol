@@ -31,7 +31,7 @@ contract XtraBBroRewarder is Ownable {
         uint16 bBroRewardsXtraMultiplier_,
         uint256 amountOfEpochsForXtraReward_,
         uint256 terraMigratorExtraPerc_
-    ) {
+    ) Ownable(msg.sender) {
         bBroToken = IERC20Mintable(bBroToken_);
         staking = IStakingV1(staking_);
         couldBeClaimedUntil = couldBeClaimedUntil_;
