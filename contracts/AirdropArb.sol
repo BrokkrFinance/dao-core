@@ -8,7 +8,7 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 contract AirdropArb is Ownable {
     using SafeERC20 for IERC20;
 
-    IERC20 tokenToDrop;
+    IERC20 public tokenToDrop;
 
     struct User {
         address user;
