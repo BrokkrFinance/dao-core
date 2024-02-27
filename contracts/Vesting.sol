@@ -22,7 +22,7 @@ contract Vesting is Ownable {
 
     mapping(address => VestingInfo) private vestingInfos;
 
-    constructor(address token_) {
+    constructor(address token_) Ownable(msg.sender) {
         broToken = IERC20(token_);
     }
 

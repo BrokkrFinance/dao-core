@@ -1,8 +1,12 @@
 node_modules
 .env
+.gitignore.swp
 coverage
 coverage.json
 typechain
+bookmarks.json
+tasks.json
+tenderly.yaml
 
 #Hardhat files
 cache

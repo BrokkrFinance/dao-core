@@ -5,7 +5,7 @@ import { IEpochManager } from "./interfaces/IEpochManager.sol";
 import { IDistributionHandler } from "./interfaces/IDistributionHandler.sol";
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-import { Pausable } from "@openzeppelin/contracts/security/Pausable.sol";
+import { Pausable } from "@openzeppelin/contracts/utils/Pausable.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
@@ -37,7 +37,7 @@ contract TokenDistributor is Ownable, Pausable {
         address token_,
         address epochManager_,
         uint256 distributionStartTimestamp_
-    ) {
+    ) Ownable(msg.sender) {
         broToken = IERC20(token_);
         epochManager = IEpochManager(epochManager_);
         lastDistribution = distributionStartTimestamp_;

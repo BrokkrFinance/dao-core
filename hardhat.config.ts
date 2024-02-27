@@ -1,10 +1,7 @@
-import "@nomiclabs/hardhat-etherscan"
-import "@nomiclabs/hardhat-solpp"
-import "@nomiclabs/hardhat-waffle"
+import "@nomicfoundation/hardhat-ethers"
+import "@nomicfoundation/hardhat-verify"
 import "@openzeppelin/hardhat-upgrades"
-import "@typechain/hardhat"
 import * as dotenv from "dotenv"
-import "hardhat-contract-sizer"
 import "hardhat-gas-reporter"
 import { HardhatUserConfig } from "hardhat/config"
 import "solidity-coverage"
@@ -13,15 +10,12 @@ dotenv.config()
 
 const config: HardhatUserConfig = {
   solidity: {
-    version: "0.8.13",
+    version: "0.8.20",
     settings: {
-      viaIR: true,
+      viaIR: false,
       optimizer: {
         enabled: true,
         runs: 1,
-      },
-      metadata: {
-        bytecodeHash: "none",
       },
     },
   },
@@ -33,7 +27,6 @@ const config: HardhatUserConfig = {
   networks: {
     hardhat: {
       allowUnlimitedContractSize: false,
-      blockGasLimit: 30_000_000,
     },
     avax_mainnet: {
       url: "https://api.avax.network/ext/bc/C/rpc",
@@ -45,18 +38,22 @@ const config: HardhatUserConfig = {
       chainId: 43113,
       accounts: [`0x${process.env.TESTNET_PRIVATE_KEY}`],
     },
+    arbitrum: {
+      url: `${process.env["ARBITRUM_ARCHIVE_NODE_URL"]}`,
+      chainId: 42161,
+      accounts: [`0x${process.env.MAINNET_PRIVATE_KEY}`],
+    },
   },
   gasReporter: {
     enabled: process.env.REPORT_GAS !== undefined,
     currency: "USD",
   },
-  contractSizer: {
-    alphaSort: true,
-    runOnCompile: true,
-    strict: true,
-  },
   etherscan: {
-    apiKey: `${process.env.ETHERSCAN_KEY}`,
+    apiKey: {
+      avalanche: `${process.env.SNOWTRACE_API_KEY}`,
+      bsc: `${process.env.BSC_SCAN_API_KEY}`,
+      arbitrumOne: `${process.env.ARBI_SCAN_API_KEY}`,
+    },
   },
 }
 

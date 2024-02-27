@@ -13,7 +13,7 @@ contract Treasury is Ownable {
 
     mapping(IERC20 => bool) private whitelistedTokens;
 
-    constructor(address[] memory whitelist_) {
+    constructor(address[] memory whitelist_) Ownable(msg.sender) {
         for (uint256 i = 0; i < whitelist_.length; i++) {
             whitelistedTokens[IERC20(whitelist_[i])] = true;
         }
@@ -41,7 +41,7 @@ contract Treasury is Ownable {
         bytes memory _data
     ) external onlyOwner onlyWhitelistedToken(_token) {
         _tokenTransfer(_token, _contract, _amount);
-        _contract.functionCall(_data, "Failed to execute contracts method");
+        _contract.functionCall(_data);
     }
 
     function nativeTransfer(address payable _to, uint256 _amount)
@@ -57,10 +57,7 @@ contract Treasury is Ownable {
         bytes memory _data
     ) external onlyOwner {
         _nativeTransfer(_contract, _amount);
-        _contract.functionCall(
-            _data,
-            "Failed to perform call to the contracts function"
-        );
+        _contract.functionCall(_data);
     }
 
     function _tokenTransfer(
