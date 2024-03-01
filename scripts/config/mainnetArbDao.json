@@ -1,0 +1,9 @@
+{
+  "broTokenOwner": "0x3ed85f0488EdF594F212c5346E7893B42EC33Af7",
+  "broTokenTotalSupply": "550000000000000000000000000",
+  "bbroTokenOwner": "0x3ed85f0488EdF594F212c5346E7893B42EC33Af7",
+  "bbroTokenTotalSupply": "90000000000000000000000000",
+  "stakingContractOwner": "0x3ed85f0488EdF594F212c5346E7893B42EC33Af7",
+  "initialLockedUntil": 1711324800,
+  "protocolMigratorContractOwner": "0x80a64edD2141118543c790A689E238cdED78e526"
+}

@@ -422,6 +422,7 @@ contract StakingArb is
         view
         returns (uint256)
     {
+        // solhint-disable-next-line not-rely-on-time
         return
             Math.min(block.timestamp, rewardData[_rewardsToken].periodFinish);
     }
@@ -477,6 +478,7 @@ contract StakingArb is
         external
         onlyOwner
     {
+        // solhint-disable-next-line not-rely-on-time
         require(
             block.timestamp < initialLockedUntil,
             "Initial locked until can no longer be extended"
@@ -558,11 +560,13 @@ contract StakingArb is
             reward
         );
 
+        // solhint-disable-next-line not-rely-on-time
         if (block.timestamp >= rewardData[_rewardsToken].periodFinish) {
             rewardData[_rewardsToken].rewardRate = reward.div(
                 rewardData[_rewardsToken].rewardsDuration
             );
         } else {
+            // solhint-disable-next-line not-rely-on-time
             uint256 remaining = rewardData[_rewardsToken].periodFinish.sub(
                 block.timestamp
             );
@@ -574,7 +578,9 @@ contract StakingArb is
             );
         }
 
+        // solhint-disable-next-line not-rely-on-time
         rewardData[_rewardsToken].lastUpdateTime = block.timestamp;
+        // solhint-disable-next-line not-rely-on-time
         rewardData[_rewardsToken].periodFinish = block.timestamp.add(
             rewardData[_rewardsToken].rewardsDuration
         );
@@ -601,6 +607,7 @@ contract StakingArb is
     function setRewardsDuration(address _rewardsToken, uint256 _rewardsDuration)
         external
     {
+        // solhint-disable-next-line not-rely-on-time
         require(
             block.timestamp > rewardData[_rewardsToken].periodFinish,
             "Reward period still active"
@@ -639,6 +646,7 @@ contract StakingArb is
     }
 
     modifier passedInitialLockedUntil() {
+        // solhint-disable-next-line not-rely-on-time
         require(
             block.timestamp > initialLockedUntil,
             "Initial locked until is not passed"

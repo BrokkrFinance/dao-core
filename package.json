@@ -14,7 +14,6 @@
     "@openzeppelin/hardhat-upgrades": "^3.0.0",
     "@typechain/ethers-v6": "^0.5.0",
     "@typechain/hardhat": "^9.1.0",
-    "hardhat-deploy": "^0.11.45",
     "@types/chai": "^4.2.21",
     "@types/mocha": "^9.0.0",
     "@types/node": "^12.0.0",
@@ -33,6 +32,7 @@
     "ethers": "^6.1.0",
     "hardhat": "^2.19.0",
     "hardhat-contract-sizer": "^2.5.1",
+    "hardhat-deploy": "^0.11.45",
     "hardhat-gas-reporter": "^1.0.4",
     "husky": "^8.0.1",
     "keccak256": "^1.0.6",
@@ -46,7 +46,9 @@
     "solidity-coverage": "^0.7.16",
     "ts-node": "^10.1.0",
     "typechain": "^5.1.2",
-    "typescript": "^4.5.2"
+    "typescript": "^4.5.2",
+ "@ethersproject/keccak256": "^5.7.0",
+    "@openzeppelin/merkle-tree": "^1.0.6"
   },
   "scripts": {
     "compile": "hardhat compile",
@@ -68,8 +70,5 @@
     "*.sol": "prettier --write",
     "*.js": "prettier --write",
     "*.ts": "prettier --write"
-  },
-  "dependencies": {
-    "@ethersproject/keccak256": "^5.7.0"
   }
 }

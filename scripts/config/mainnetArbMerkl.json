@@ -1,0 +1,6 @@
+{
+  "rewardToken": "0x6666666666666666666666666666666666666666",
+  "admin": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+  "merkleRootUpdater": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+  "pauser": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+}

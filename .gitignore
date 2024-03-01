@@ -7,6 +7,7 @@ typechain
 bookmarks.json
 tasks.json
 tenderly.yaml
+.vscode
 
 #Hardhat files
 cache
