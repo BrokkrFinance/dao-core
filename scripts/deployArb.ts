@@ -1,38 +1,15 @@
 import { run } from "hardhat"
+import { readConfig } from "./utils"
 
 async function verifyContract(contractAddress: string, args: any) {
   if (hre.network.name !== "hardhat")
     await run("verify:verify", { address: contractAddress, constructorArguments: args })
 }
 
-function getProdConfig() {
-  return {
-    broTokenOwner: "0x3ed85f0488EdF594F212c5346E7893B42EC33Af7",
-    broTokenTotalSupply: "550000000000000000000000000",
-    bbroTokenOwner: "0x3ed85f0488EdF594F212c5346E7893B42EC33Af7",
-    bbroTokenTotalSupply: "90000000000000000000000000",
-    stakingContractOwner: "0x3ed85f0488EdF594F212c5346E7893B42EC33Af7",
-    initialLockedUntil: 1711324800,
-    protocolMigratorContractOwner: "0x80a64edD2141118543c790A689E238cdED78e526",
-  }
-}
-
-function getTestConfig() {
-  return {
-    broTokenOwner: "0x48762C21D2507c17c5F635F1BD3C1E917DB46199",
-    broTokenTotalSupply: "1000",
-    bbroTokenOwner: "0x48762C21D2507c17c5F635F1BD3C1E917DB46199",
-    bbroTokenTotalSupply: "1000",
-    stakingContractOwner: "0x48762C21D2507c17c5F635F1BD3C1E917DB46199",
-    initialLockedUntil: 0,
-    protocolMigratorContractOwner: "0x48762C21D2507c17c5F635F1BD3C1E917DB46199",
-  }
-}
-
 export async function deploy() {
   const deployerAddress = (await ethers.getSigners())[0].address
 
-  const config = getProdConfig()
+  const config = readConfig("mainnetArbDao")
 
   // Bro token deployment
   console.log("Deploying Bro...")
@@ -93,27 +70,48 @@ export async function deploy() {
   }
 }
 
-async function deployTestStakingContract() {
-  const config = getTestConfig()
-  const broTOkenAddress = "0x2b45e21C35A33C58E4C5ce82A82466b0754Fd154"
+async function deployContract(contractName: string, constructorArgs: any[]): any {
+  console.log("Deploying ", contractName, "...")
+  const ContractFactory = await ethers.getContractFactory(contractName)
 
-  // Staking deployment
-  console.log("Deploying staking...")
-  const Staking = await ethers.getContractFactory("StakingArb")
-  const staking = await upgrades.deployProxy(Staking, [broTOkenAddress, config.initialLockedUntil])
-  const stakingAddress = await staking.getAddress()
-  await staking.transferOwnership(config.stakingContractOwner)
-  await verifyContract(stakingAddress, [])
-  console.log("Staking address: ", stakingAddress)
+  const contract = await ContractFactory.deploy(...constructorArgs)
+  const contractAddress = await contract.getAddress()
+  await verifyContract(contractAddress, constructorArgs)
+  console.log(contractName, " address: ", contractAddress)
   console.log("------------")
+  return contract
 }
 
-deploy().catch((error) => {
-  console.error(error)
-  process.exitCode = 1
-})
+async function deployMerkleReward() {
+  const merkleRewardConfig = readConfig("mainnetArbMerkl")
 
-// deployTestStakingContract().catch((error) => {
+  const merkleReward = await deployContract("MerkleReward", [
+    merkleRewardConfig.rewardToken,
+    merkleRewardConfig.admin,
+    merkleRewardConfig.merkleRootUpdater,
+    merkleRewardConfig.pauser,
+  ])
+
+  if (hre.network.name == "hardhat") {
+    await merkleReward.registerMerkleRoot("0x34f56aaad956c17bd71ba99d255c489e4208483fe1aaf6182833f3c1fd097aa0")
+    console.log("root:", await merkleReward.root())
+    await merkleReward.claim(
+      [
+        "0x603ebc0e555e20c1c652b3f4cbfe6f2ecf75b218cfee015568155d5bc51372a4",
+        "0xd728440a1ca7bcdfbf5a6f529c3d912abf409aca9cb22cf108adffcc5ef8a56b",
+      ],
+      "0x2222222222222222222222222222222222222222",
+      22
+    )
+  }
+}
+
+// deploy().catch((error) => {
 //   console.error(error)
 //   process.exitCode = 1
 // })
+
+deployMerkleReward().catch((error) => {
+  console.error(error)
+  process.exitCode = 1
+})
